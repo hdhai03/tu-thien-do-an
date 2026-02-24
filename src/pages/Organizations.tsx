@@ -50,7 +50,7 @@ export default function Organizations() {
         setLoading(false);
       }
     };
-    
+
     fetchAndCalculateData();
   }, []);
 
@@ -92,9 +92,9 @@ export default function Organizations() {
             {organizations.map((org) => (
               <div key={org.id} className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-xl hover:shadow-pink-900/5 transition-all duration-300 flex flex-col">
                 <div className="flex items-center gap-4 mb-4">
-                  <img 
-                    src={org.logo} 
-                    alt={org.name} 
+                  <img
+                    src={org.logo}
+                    alt={org.name}
                     className="w-16 h-16 rounded-full object-cover border border-gray-100"
                     referrerPolicy="no-referrer"
                   />
@@ -106,11 +106,11 @@ export default function Organizations() {
                     <p className="text-sm text-gray-500">Đối tác xác thực</p>
                   </div>
                 </div>
-                
+
                 <p className="text-gray-600 text-sm mb-6 flex-1 line-clamp-3">
                   {org.description}
                 </p>
-                
+
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-pink-50 rounded-xl p-3 text-center">
                     <div className="text-pink-600 text-sm mb-1 flex items-center justify-center gap-1 font-medium">
@@ -125,12 +125,12 @@ export default function Organizations() {
                     <div className="font-bold text-gray-900 text-sm">{formatCurrency(org.totalRaised)}</div>
                   </div>
                 </div>
-                
-                <Link 
-                  to={`/hoan-canh?org=${org.id}`} 
+
+                <Link
+                  to={`/to-chuc/${org.id}`}
                   className="w-full block text-center bg-white border border-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl hover:bg-gray-50 hover:text-pink-600 hover:border-pink-200 transition-colors"
                 >
-                  Xem các dự án
+                  Xem thêm
                 </Link>
               </div>
             ))}

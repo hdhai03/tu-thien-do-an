@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import CampaignDetail from "./pages/CampaignDetail";
 import Campaigns from "./pages/Campaigns";
 import Organizations from "./pages/Organizations";
+import OrganizationDetail from "./pages/OrganizationDetail";
 import Transparency from "./pages/Transparency";
 import Login from "./pages/Login";
 import DonationHistory from "./pages/DonationHistory";
@@ -25,6 +26,7 @@ export default function App() {
             <Route index element={<Home />} />
             <Route path="du-an" element={<Campaigns />} />
             <Route path="to-chuc" element={<Organizations />} />
+            <Route path="to-chuc/:id" element={<OrganizationDetail />} />
             <Route path="minh-bach" element={<Transparency />} />
             <Route path="tin-tuc" element={<News />} />
             <Route path="tin-tuc/:id" element={<NewsDetail />} />

@@ -15,6 +15,7 @@ export default function OrganizationDashboard() {
 
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [posts, setPosts] = useState<any[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
@@ -32,6 +33,11 @@ export default function OrganizationDashboard() {
     image: "",
     category: "Giáo dục",
     dateEnd: "",
+  });
+
+  const [postForm, setPostForm] = useState({
+    content: "",
+    image: "",
   });
 
   useEffect(() => {
@@ -59,6 +65,11 @@ export default function OrganizationDashboard() {
           const campQuery = query(collection(db, "campaigns"), where("organizationId", "==", orgData.id));
           const campSnap = await getDocs(campQuery);
           setCampaigns(campSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Campaign[]);
+
+          // Fetch posts for this organization
+          const postsQuery = query(collection(db, "organization_posts"), where("organizationId", "==", orgData.id));
+          const postsSnap = await getDocs(postsQuery);
+          setPosts(postsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -151,6 +162,45 @@ export default function OrganizationDashboard() {
     setActiveTab("create_campaign");
   };
 
+  const handleCreatePost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!organization) return;
+
+    setIsSubmitting(true);
+    try {
+      const postData = {
+        ...postForm,
+        organizationId: organization.id,
+        createdAt: Timestamp.now(),
+        likes: [],
+        comments: [],
+      };
+
+      const docRef = await addDoc(collection(db, "organization_posts"), postData);
+      alert("Đăng bài viết thành công!");
+      setPosts(prev => [{ id: docRef.id, ...postData }, ...prev]);
+      setPostForm({ content: "", image: "" });
+      setActiveTab("posts");
+    } catch (error) {
+      console.error("Lỗi đăng bài viết:", error);
+      alert("Có lỗi xảy ra.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeletePost = async (id: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xoá bài viết này?")) return;
+    try {
+      await deleteDoc(doc(db, "organization_posts", id));
+      setPosts(prev => prev.filter(p => p.id !== id));
+      alert("Xoá bài viết thành công!");
+    } catch (error) {
+      console.error("Lỗi xoá bài viết:", error);
+      alert("Có lỗi xảy ra khi xoá bài viết.");
+    }
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <Loader2 className="w-8 h-8 animate-spin text-pink-600" />
@@ -193,6 +243,26 @@ export default function OrganizationDashboard() {
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "create_campaign" ? "bg-pink-50 text-pink-600" : "text-gray-600 hover:bg-gray-50"}`}
           >
             <Plus className="w-5 h-5" /> Đăng dự án mới
+          </button>
+
+          <div className="pt-4 pb-2 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
+            Bài viết
+          </div>
+
+          <button
+            onClick={() => setActiveTab("posts")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "posts" ? "bg-pink-50 text-pink-600" : "text-gray-600 hover:bg-gray-50"}`}
+          >
+            <List className="w-5 h-5" /> Danh sách bài viết
+          </button>
+          <button
+            onClick={() => {
+              setPostForm({ content: "", image: "" });
+              setActiveTab("create_post");
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "create_post" ? "bg-pink-50 text-pink-600" : "text-gray-600 hover:bg-gray-50"}`}
+          >
+            <Plus className="w-5 h-5" /> Đăng bài viết mới
           </button>
         </div>
 
@@ -425,6 +495,112 @@ export default function OrganizationDashboard() {
                   >
                     {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                     {editingCampaignId ? "Cập nhật" : "Gửi duyệt dự án"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {activeTab === "posts" && (
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <List className="w-5 h-5 text-pink-600" /> Danh sách bài viết
+              </h2>
+              {posts.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                  <ImageIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">Bạn chưa đăng bài viết nào</p>
+                  <button onClick={() => setActiveTab("create_post")} className="mt-4 text-pink-600 font-bold hover:underline">Đăng bài viết đầu tiên</button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {posts.map((post) => (
+                    <div key={post.id} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex flex-col md:flex-row gap-6">
+                      {post.image && (
+                        <div className="w-full md:w-48 h-32 shrink-0 rounded-xl overflow-hidden bg-gray-100">
+                          <img src={post.image} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0 flex flex-col">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="text-xs text-gray-500">
+                            {post.createdAt?.toDate ? post.createdAt.toDate().toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : "Vừa xong"}
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleDeletePost(post.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Xoá">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-gray-800 line-clamp-3 mb-4">{post.content}</p>
+                        <div className="mt-auto flex gap-4 text-sm text-gray-500 font-medium">
+                          <span>{(post.likes || []).length} lượt thích</span>
+                          <span>{(post.comments || []).length} bình luận</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "create_post" && (
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-pink-600" /> Đăng bài viết mới
+              </h2>
+              <form onSubmit={handleCreatePost} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Nội dung bài viết</label>
+                  <textarea
+                    required
+                    rows={6}
+                    value={postForm.content}
+                    onChange={(e) => setPostForm({ ...postForm, content: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+                    placeholder="Chia sẻ hoạt động, tin tức của tổ chức..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Ảnh đính kèm (Tuỳ chọn)</label>
+                  <div className="flex items-center gap-4">
+                    {postForm.image && (
+                      <img src={postForm.image} alt="Preview" className="w-32 h-32 object-cover rounded-xl border border-gray-200" />
+                    )}
+                    <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                      <Upload className="w-5 h-5 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-700">Chọn ảnh</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              setIsSubmitting(true);
+                              const url = await uploadImage(file);
+                              setPostForm({ ...postForm, image: url });
+                            } catch (error) {
+                              alert("Lỗi upload ảnh");
+                            } finally {
+                              setIsSubmitting(false);
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !postForm.content.trim()}
+                    className="bg-pink-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-pink-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Đăng bài
                   </button>
                 </div>
               </form>
