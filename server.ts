@@ -56,19 +56,14 @@ async function startServer() {
   // API Upload ảnh đơn giản
   app.post("/api/upload", async (req, res) => {
     try {
-      const fileStr = req.body.image;
-
-      // Kiểm tra xem có dữ liệu gửi lên không
-      if (!fileStr) return res.status(400).json({ error: "Không có dữ liệu ảnh" });
-
+      const fileStr = req.body.image; // Gửi ảnh dạng Base64 từ Frontend
       const uploadResponse = await cloudinary.uploader.upload(fileStr, {
-        folder: 'nuoi_em',
-        resource_type: "auto" // Thêm dòng này để Cloudinary tự nhận diện loại file
+        folder: 'nuoi_em', // Lưu vào thư mục nuoi_em
       });
-      console.log("Cloudinary Config:", cloudinary.config().cloud_name);
       res.json({ url: uploadResponse.secure_url });
     } catch (error) {
-      console.error("Lỗi Cloudinary:", error); // Log chi tiết lỗi từ Cloudinary
+      console.error(error);
+      res.status(500).json({ error: 'Lỗi khi upload ảnh' });
     }
   });
 
@@ -77,7 +72,7 @@ async function startServer() {
     console.log("\n📩 Nhận yêu cầu tạo link thanh toán:", req.body);
 
     try {
-      const { amount, campaignId, customerName, userId } = req.body;
+      const { amount, campaignId, customerName, userId, isAnonymous } = req.body;
       const orderCode = Number(String(Date.now()).slice(-6));
 
       // 💡 SỬA: Lưu vào collection riêng biệt dành cho các đơn chờ thanh toán
@@ -86,6 +81,7 @@ async function startServer() {
         userId: userId || "",
         customerName: customerName || "Nhà hảo tâm ẩn danh",
         amount: Number(amount),
+        isAnonymous: isAnonymous || false,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
@@ -94,8 +90,8 @@ async function startServer() {
         amount: Number(amount),
         description: `Quyen gop ${orderCode}`,
         // URL này dùng để quay về trang web sau khi khách thanh toán xong (về Frontend)
-        returnUrl: `https://adaline-prospectless-barb.ngrok-free.dev/campaign/${campaignId}`,
-        cancelUrl: `https://adaline-prospectless-barb.ngrok-free.dev/campaign/${campaignId}`,
+        returnUrl: `https://adaline-prospectless-barb.ngrok-free.dev/du-an/${campaignId}`,
+        cancelUrl: `https://adaline-prospectless-barb.ngrok-free.dev/du-an/${campaignId}`,
       };
 
       const paymentLink = await payOS.paymentRequests.create(paymentData);
@@ -134,6 +130,7 @@ async function startServer() {
             userId: info?.userId || "",
             fullname: info?.customerName || "Nhà hảo tâm ẩn danh",
             amount: data.amount,
+            isAnonymous: info?.isAnonymous || false,
             donationDate: admin.firestore.FieldValue.serverTimestamp(),
             transactionId: data.paymentLinkId,
             orderCode: orderCode

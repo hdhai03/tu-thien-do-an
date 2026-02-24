@@ -13,6 +13,7 @@ import NewsDetail from "./pages/NewsDetail";
 import { AuthProvider } from "./context/AuthContext";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
+import OrganizationDashboard from "./pages/OrganizationDashboard";
 import Community from "./pages/Community";
 
 export default function App() {
@@ -23,7 +24,6 @@ export default function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />} />
             <Route path="du-an" element={<Campaigns />} />
-            <Route path="/du-an/:id" element={<CampaignDetail />} />
             <Route path="to-chuc" element={<Organizations />} />
             <Route path="minh-bach" element={<Transparency />} />
             <Route path="tin-tuc" element={<News />} />
@@ -32,8 +32,9 @@ export default function App() {
             <Route path="dang-nhap" element={<Login />} />
             <Route path="dang-ky" element={<Register />} />
             <Route path="lich-su-quyen-gop" element={<DonationHistory />} />
-            <Route path="campaign/:id" element={<CampaignDetail />} />
+            <Route path="du-an/:id" element={<CampaignDetail />} />
             <Route path="admin" element={<AdminDashboard />} />
+            <Route path="organization" element={<OrganizationDashboard />} />
             <Route path="cong-dong" element={<Community />} />
           </Route>
         </Routes>

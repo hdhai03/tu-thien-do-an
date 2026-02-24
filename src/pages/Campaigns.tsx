@@ -16,7 +16,7 @@ interface CampaignWithUI extends Campaign {
 export default function Campaigns() {
   const [loading, setLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<CampaignWithUI[]>([]);
-  
+
   // States cho bộ lọc
   const [activeCategories, setActiveCategories] = useState<string[]>([]);
   const [activeStatus, setActiveStatus] = useState("Tất cả");
@@ -31,7 +31,7 @@ export default function Campaigns() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
+
         // Lấy Organizations để map tên và logo
         const orgSnapshot = await getDocs(collection(db, "organizations"));
         const orgMap: Record<string, { name: string, logo: string }> = {};
@@ -41,21 +41,23 @@ export default function Campaigns() {
 
         // Lấy Campaigns
         const campaignSnapshot = await getDocs(collection(db, "campaigns"));
-        const data = campaignSnapshot.docs.map(doc => {
-          const item = doc.data() as Campaign;
-          
-          // Tính daysLeft an toàn
-          const endDate = item.dateEnd?.toDate ? item.dateEnd.toDate() : new Date();
-          const diff = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-          
-          return {
-            ...item,
-            id: doc.id,
-            daysLeft: diff > 0 ? diff : 0,
-            organizationName: orgMap[item.organizationId]?.name || "Tổ chức đang xác thực",
-            organizationLogo: orgMap[item.organizationId]?.logo || ""
-          };
-        }) as CampaignWithUI[];
+        const data = campaignSnapshot.docs
+          .map(doc => {
+            const item = doc.data() as Campaign;
+
+            // Tính daysLeft an toàn
+            const endDate = item.dateEnd?.toDate ? item.dateEnd.toDate() : new Date();
+            const diff = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+            return {
+              ...item,
+              id: doc.id,
+              daysLeft: diff > 0 ? diff : 0,
+              organizationName: orgMap[item.organizationId]?.name || "Tổ chức đang xác thực",
+              organizationLogo: orgMap[item.organizationId]?.logo || ""
+            };
+          })
+          .filter(item => item.status === 'approved' || !item.status) as CampaignWithUI[];
 
         setCampaigns(data);
       } catch (error) {
@@ -69,8 +71,8 @@ export default function Campaigns() {
   }, []);
 
   const toggleCategory = (category: string) => {
-    setActiveCategories(prev => 
-      prev.includes(category) 
+    setActiveCategories(prev =>
+      prev.includes(category)
         ? prev.filter(c => c !== category)
         : [...prev, category]
     );
@@ -79,15 +81,15 @@ export default function Campaigns() {
   // 2. Logic lọc tổng hợp (Sử dụng state campaigns đã fetch)
   const filteredCampaigns = campaigns.filter(c => {
     const matchCategory = activeCategories.length === 0 || activeCategories.includes(c.category);
-    const matchStatus = 
+    const matchStatus =
       activeStatus === "Tất cả" ? true :
-      activeStatus === "Đang gây quỹ" ? c.daysLeft > 0 :
-      c.daysLeft <= 0;
+        activeStatus === "Đang gây quỹ" ? c.daysLeft > 0 :
+          c.daysLeft <= 0;
     const matchSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     return matchCategory && matchStatus && matchSearch;
   });
-  
+
   return (
     <div className="bg-gray-50 min-h-screen pb-20">
       {/* Header Section */}
@@ -106,7 +108,7 @@ export default function Campaigns() {
           {(activeCategories.length > 0 || activeStatus !== "Tất cả") && (
             <div className="flex flex-wrap gap-2 mb-6 animate-in fade-in slide-in-from-left-4 duration-300">
               {activeCategories.map(cat => (
-                <button 
+                <button
                   key={cat}
                   onClick={() => toggleCategory(cat)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-pink-900 text-white rounded-full text-sm font-medium hover:bg-pink-800 transition-colors"
@@ -115,15 +117,15 @@ export default function Campaigns() {
                 </button>
               ))}
               {activeStatus !== "Tất cả" && (
-                <button 
+                <button
                   onClick={() => setActiveStatus("Tất cả")}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-pink-800 text-white rounded-full text-sm font-medium hover:bg-gray-700 transition-colors"
                 >
                   {activeStatus} <X className="w-4 h-4" />
                 </button>
               )}
-              <button 
-                onClick={() => {setActiveCategories([]); setActiveStatus("Tất cả");}}
+              <button
+                onClick={() => { setActiveCategories([]); setActiveStatus("Tất cả"); }}
                 className="text-sm text-gray-500 hover:text-pink-600 ml-2 font-medium"
               >
                 Xóa tất cả bộ lọc
@@ -134,15 +136,15 @@ export default function Campaigns() {
           {/* Search & Filter Bar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-4 mb-4">
             <div className="flex items-center gap-8">
-              <button 
+              <button
                 onClick={() => setExpandedFilter(expandedFilter === "category" ? null : "category")}
                 className={cn("flex items-center gap-2 font-bold text-sm transition-colors", (activeCategories.length > 0 || expandedFilter === "category") ? "text-pink-600" : "text-gray-600 hover:text-gray-900")}
               >
                 Danh mục {activeCategories.length > 0 && `(${activeCategories.length})`}
                 <ChevronDown className={cn("w-4 h-4 transition-transform", expandedFilter === "category" && "rotate-180")} />
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => setExpandedFilter(expandedFilter === "status" ? null : "status")}
                 className={cn("flex items-center gap-2 font-bold text-sm transition-colors", (activeStatus !== "Tất cả" || expandedFilter === "status") ? "text-pink-600" : "text-gray-600 hover:text-gray-900")}
               >
@@ -150,14 +152,14 @@ export default function Campaigns() {
                 <ChevronDown className={cn("w-4 h-4 transition-transform", expandedFilter === "status" && "rotate-180")} />
               </button>
             </div>
-            
+
             <div className="relative w-full md:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Tìm kiếm hoàn cảnh..." 
+                placeholder="Tìm kiếm hoàn cảnh..."
                 className="pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 w-full md:w-64 transition-all"
               />
             </div>
@@ -173,8 +175,8 @@ export default function Campaigns() {
                     onClick={() => toggleCategory(cat)}
                     className={cn(
                       "px-5 py-2 rounded-full text-sm font-medium transition-colors border",
-                      activeCategories.includes(cat) 
-                        ? "bg-pink-900 text-white border-pink-900" 
+                      activeCategories.includes(cat)
+                        ? "bg-pink-900 text-white border-pink-900"
                         : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
                     )}
                   >
@@ -195,8 +197,8 @@ export default function Campaigns() {
                     }}
                     className={cn(
                       "px-5 py-2 rounded-full text-sm font-medium transition-colors border",
-                      activeStatus === status 
-                        ? "bg-pink-900 text-white border-pink-900" 
+                      activeStatus === status
+                        ? "bg-pink-900 text-white border-pink-900"
                         : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
                     )}
                   >
@@ -225,11 +227,11 @@ export default function Campaigns() {
             {filteredCampaigns.map((campaign) => {
               const progress = Math.min(100, (campaign.raised / campaign.goal) * 100);
               return (
-                <Link to={`/campaign/${campaign.id}`} key={campaign.id} className="group flex flex-col bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:shadow-pink-900/5 hover:-translate-y-1 transition-all duration-300">
+                <Link to={`/du-an/${campaign.id}`} key={campaign.id} className="group flex flex-col bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:shadow-pink-900/5 hover:-translate-y-1 transition-all duration-300">
                   <div className="relative h-48 overflow-hidden">
-                    <img 
-                      src={campaign.image || "https://via.placeholder.com/400x300"} 
-                      alt={campaign.title} 
+                    <img
+                      src={campaign.image || "https://via.placeholder.com/400x300"}
+                      alt={campaign.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       referrerPolicy="no-referrer"
                     />
@@ -237,7 +239,7 @@ export default function Campaigns() {
                       {campaign.category}
                     </div>
                   </div>
-                  
+
                   <div className="p-5 flex-1 flex flex-col">
                     <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-pink-600 transition-colors">
                       {campaign.title}
@@ -250,7 +252,7 @@ export default function Campaigns() {
                       )}
                       <span className="truncate">{campaign.organizationName}</span>
                     </div>
-                    
+
                     <div className="mt-auto">
                       <div className="flex justify-between text-sm font-medium mb-1.5">
                         <span className="text-pink-600">{formatCurrency(campaign.raised)}</span>

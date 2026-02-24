@@ -13,6 +13,7 @@ export interface Campaign {
   category: string;
   description: string;
   storyImages: Array<string>;
+  status?: 'pending' | 'approved' | 'rejected';
 }
 
 export interface Organization {
@@ -45,6 +46,7 @@ export interface OrganizationRequest {
   userId: string;
   organizationName: string;
   description: string;
+  logo: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: Timestamp;
 }

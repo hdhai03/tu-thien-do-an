@@ -54,7 +54,7 @@ export default function CampaignDetail() {
       donations.map(async (donation) => {
         // Ưu tiên hiển thị "Ẩn danh" nếu khách chọn
         if (donation.isAnonymous) {
-          return { ...donation, fullname: "Nhà hảo tâm ẩn danh" };
+          return { ...donation, fullname: "Nhà hảo tâm ẩn danh", avatar: undefined };
         }
 
         // Nếu có userId, thử tìm thông tin trong bảng users
@@ -132,18 +132,40 @@ export default function CampaignDetail() {
           limit(15)
         );
 
-        // Query 2: Quyên góp lớn nhất (Top)
-        const topQ = query(
+        // Fetch all donations for the campaign to calculate top donors
+        const allDonationsQ = query(
           donationColl,
-          where("campaignId", "==", id),
-          orderBy("amount", "desc"),
-          limit(3)
+          where("campaignId", "==", id)
         );
 
-        const [recentSnap, topSnap] = await Promise.all([getDocs(recentQ), getDocs(topQ)]);
+        const [recentSnap, allDonationsSnap] = await Promise.all([getDocs(recentQ), getDocs(allDonationsQ)]);
 
         const rawRecent = recentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const rawTop = topSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const allDonations = allDonationsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+
+        // Group by userId for top donations
+        const userTotals: Record<string, any> = {};
+        const anonymousDonations: any[] = [];
+
+        allDonations.forEach(donation => {
+          if (donation.userId && !donation.isAnonymous) {
+            if (!userTotals[donation.userId]) {
+              userTotals[donation.userId] = {
+                ...donation,
+                amount: 0,
+              };
+            }
+            userTotals[donation.userId].amount += donation.amount;
+            userTotals[donation.userId].isAnonymous = false;
+            userTotals[donation.userId].fullname = donation.fullname;
+          } else {
+            anonymousDonations.push(donation);
+          }
+        });
+
+        const groupedDonations = [...Object.values(userTotals), ...anonymousDonations];
+        groupedDonations.sort((a, b) => b.amount - a.amount);
+        const rawTop = groupedDonations.slice(0, 3);
 
         const [enrichedRecent, enrichedTop] = await Promise.all([
           enrichDonationsWithUserInfo(rawRecent),

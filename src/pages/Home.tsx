@@ -223,7 +223,7 @@ export default function Home() {
               const org = orgMap[campaign.organizationId] || { name: "Tổ chức đang xác thực", logo: "" };
 
               return (
-                <Link to={`/campaign/${campaign.id}`} key={campaign.id} className="group bg-white rounded-2xl border-2 border-gray-100 overflow-hidden hover:border-gray-300 transition-all flex flex-col h-full">
+                <Link to={`/du-an/${campaign.id}`} key={campaign.id} className="group bg-white rounded-2xl border-2 border-gray-100 overflow-hidden hover:border-gray-300 transition-all flex flex-col h-full">
                   <div className="relative h-52 overflow-hidden bg-gray-100">
                     <img src={campaign.image} alt={campaign.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   </div>

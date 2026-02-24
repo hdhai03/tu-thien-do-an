@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs, addDoc, Timestamp, query, where, updateDoc, doc, deleteDoc, orderBy, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import { BarChart3, Plus, FileText, Heart, Image as ImageIcon, Loader2, CheckCircle, XCircle, Trash2, Edit, List, Upload } from "lucide-react";
+import { BarChart3, Plus, FileText, Heart, Image as ImageIcon, Loader2, CheckCircle, XCircle, Trash2, Edit, List, Upload, Building2 } from "lucide-react";
 import { uploadImage } from "../lib/uploadImage";
 import type { Post, Campaign, NewsItem } from "../types";
 
@@ -21,6 +21,7 @@ export default function AdminDashboard() {
     const [allNews, setAllNews] = useState<NewsItem[]>([]);
     const [allPosts, setAllPosts] = useState<Post[]>([]);
     const [orgRequests, setOrgRequests] = useState<any[]>([]);
+    const [pendingCampaigns, setPendingCampaigns] = useState<Campaign[]>([]);
 
     // Edit states
     const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
@@ -87,17 +88,19 @@ export default function AdminDashboard() {
 
         const fetchAllData = async () => {
             try {
-                const [campaignsSnap, newsSnap, postsSnap, orgReqSnap] = await Promise.all([
+                const [campaignsSnap, newsSnap, postsSnap, orgReqSnap, pendingCampSnap] = await Promise.all([
                     getDocs(collection(db, "campaigns")),
                     getDocs(collection(db, "news")),
                     getDocs(query(collection(db, "posts"), where("status", "==", "approved"))),
-                    getDocs(query(collection(db, "organization_requests"), where("status", "==", "pending")))
+                    getDocs(query(collection(db, "organization_requests"), where("status", "==", "pending"))),
+                    getDocs(query(collection(db, "campaigns"), where("status", "==", "pending")))
                 ]);
 
                 setAllCampaigns(campaignsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Campaign[]);
                 setAllNews(newsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as NewsItem[]);
                 setAllPosts(postsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Post[]);
                 setOrgRequests(orgReqSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                setPendingCampaigns(pendingCampSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Campaign[]);
             } catch (error) {
                 console.error("Error fetching all data:", error);
             } finally {
@@ -109,6 +112,36 @@ export default function AdminDashboard() {
         fetchPendingPosts();
         fetchAllData();
     }, [isAuthenticated, user, navigate]);
+
+    const handleApproveCampaign = async (campaign: Campaign, status: 'approved' | 'rejected') => {
+        try {
+            await updateDoc(doc(db, "campaigns", campaign.id), { status });
+
+            if (status === 'approved') {
+                // Notify all users about new campaign
+                const usersSnap = await getDocs(collection(db, "users"));
+                const batch = writeBatch(db);
+                usersSnap.forEach(userDoc => {
+                    const notifRef = doc(collection(db, "notifications"));
+                    batch.set(notifRef, {
+                        userId: userDoc.data().UID,
+                        type: "new_campaign",
+                        message: `Dự án mới: ${campaign.title}`,
+                        read: false,
+                        createdAt: Timestamp.now(),
+                        link: `/du-an/${campaign.id}`,
+                    });
+                });
+                await batch.commit();
+            }
+
+            setPendingCampaigns(prev => prev.filter(c => c.id !== campaign.id));
+            alert(`Đã ${status === 'approved' ? 'duyệt' : 'từ chối'} dự án!`);
+        } catch (error) {
+            console.error("Lỗi duyệt dự án:", error);
+            alert("Có lỗi xảy ra khi duyệt dự án.");
+        }
+    };
 
     const handleApprovePost = async (post: Post, status: 'approved' | 'rejected') => {
         setProcessingPost(post.id);
@@ -133,56 +166,6 @@ export default function AdminDashboard() {
             alert("Có lỗi xảy ra khi duyệt bài.");
         } finally {
             setProcessingPost(null);
-        }
-    };
-
-    const handleCreateCampaign = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        try {
-            const campaignData = {
-                ...campaignForm,
-                goal: Number(campaignForm.goal),
-                dateEnd: Timestamp.fromDate(new Date(campaignForm.dateEnd)),
-            };
-
-            if (editingCampaignId) {
-                await updateDoc(doc(db, "campaigns", editingCampaignId), campaignData);
-                alert("Cập nhật dự án thành công!");
-                setAllCampaigns(prev => prev.map(c => c.id === editingCampaignId ? { ...c, ...campaignData } as Campaign : c));
-                setEditingCampaignId(null);
-            } else {
-                const docRef = await addDoc(collection(db, "campaigns"), {
-                    ...campaignData,
-                    raised: 0,
-                    donors: 0,
-                });
-                alert("Tạo dự án thành công!");
-                setAllCampaigns(prev => [{ id: docRef.id, ...campaignData, raised: 0, donors: 0 } as Campaign, ...prev]);
-
-                // Notify all users
-                const usersSnap = await getDocs(collection(db, "users"));
-                const batch = writeBatch(db);
-                usersSnap.forEach(userDoc => {
-                    const notifRef = doc(collection(db, "notifications"));
-                    batch.set(notifRef, {
-                        userId: userDoc.data().UID,
-                        type: "new_campaign",
-                        message: `Dự án mới: ${campaignData.title}`,
-                        read: false,
-                        createdAt: Timestamp.now(),
-                        link: `/du-an/${docRef.id}`,
-                    });
-                });
-                await batch.commit();
-            }
-            setCampaignForm({ title: "", description: "", goal: "", image: "", category: "Giáo dục", dateEnd: "", organizationId: "org1" });
-            setActiveTab("manage_campaigns");
-        } catch (error) {
-            console.error("Lỗi tạo/cập nhật dự án:", error);
-            alert("Có lỗi xảy ra.");
-        } finally {
-            setIsSubmitting(false);
         }
     };
 
@@ -314,7 +297,7 @@ export default function AdminDashboard() {
                     name: req.organizationName,
                     description: req.description,
                     userId: req.userId,
-                    logo: "",
+                    logo: req.logo || "",
                     campaignCount: 0,
                     totalRaised: 0,
                     createdAt: Timestamp.now()
@@ -375,14 +358,17 @@ export default function AdminDashboard() {
                         <List className="w-5 h-5" /> Danh sách dự án
                     </button>
                     <button
-                        onClick={() => {
-                            setEditingCampaignId(null);
-                            setCampaignForm({ title: "", description: "", goal: "", image: "", category: "Giáo dục", dateEnd: "", organizationId: "org1" });
-                            setActiveTab("campaigns");
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "campaigns" ? "bg-pink-50 text-pink-600" : "text-gray-600 hover:bg-gray-50"}`}
+                        onClick={() => setActiveTab("pending_campaigns")}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "pending_campaigns" ? "bg-pink-50 text-pink-600" : "text-gray-600 hover:bg-gray-50"}`}
                     >
-                        <Plus className="w-5 h-5" /> Đăng dự án mới
+                        <div className="flex items-center gap-3">
+                            <CheckCircle className="w-5 h-5" /> Duyệt dự án
+                        </div>
+                        {pendingCampaigns.length > 0 && (
+                            <span className="bg-pink-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                {pendingCampaigns.length}
+                            </span>
+                        )}
                     </button>
 
                     <button
@@ -418,6 +404,20 @@ export default function AdminDashboard() {
                         {pendingPosts.length > 0 && (
                             <span className="bg-pink-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                                 {pendingPosts.length}
+                            </span>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab("org_requests")}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "org_requests" ? "bg-pink-50 text-pink-600" : "text-gray-600 hover:bg-gray-50"}`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <Building2 className="w-5 h-5" /> Duyệt tổ chức
+                        </div>
+                        {orgRequests.length > 0 && (
+                            <span className="bg-pink-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                {orgRequests.length}
                             </span>
                         )}
                     </button>
@@ -479,114 +479,58 @@ export default function AdminDashboard() {
                         </div>
                     )}
 
-                    {activeTab === "campaigns" && (
+                    {activeTab === "pending_campaigns" && (
                         <div>
                             <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                {editingCampaignId ? <Edit className="w-5 h-5 text-pink-600" /> : <Plus className="w-5 h-5 text-pink-600" />}
-                                {editingCampaignId ? "Cập nhật dự án" : "Tạo dự án quyên góp mới"}
+                                <CheckCircle className="w-5 h-5 text-pink-600" /> Duyệt dự án quyên góp
                             </h2>
-                            <form onSubmit={handleCreateCampaign} className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Tên dự án</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={campaignForm.title}
-                                            onChange={(e) => setCampaignForm({ ...campaignForm, title: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
-                                            placeholder="Nhập tên dự án..."
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Mục tiêu quyên góp (VNĐ)</label>
-                                        <input
-                                            type="number"
-                                            required
-                                            min="10000"
-                                            value={campaignForm.goal}
-                                            onChange={(e) => setCampaignForm({ ...campaignForm, goal: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
-                                            placeholder="VD: 50000000"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Danh mục</label>
-                                        <select
-                                            value={campaignForm.category}
-                                            onChange={(e) => setCampaignForm({ ...campaignForm, category: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
-                                        >
-                                            <option value="Giáo dục">Giáo dục</option>
-                                            <option value="Y tế">Y tế</option>
-                                            <option value="Cộng đồng">Cộng đồng</option>
-                                            <option value="Khẩn cấp">Khẩn cấp</option>
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-gray-700">Ngày kết thúc</label>
-                                        <input
-                                            type="date"
-                                            required
-                                            value={campaignForm.dateEnd}
-                                            onChange={(e) => setCampaignForm({ ...campaignForm, dateEnd: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
-                                        />
-                                    </div>
-                                    <div className="space-y-2 md:col-span-2">
-                                        <label className="text-sm font-medium text-gray-700">Ảnh bìa</label>
-                                        <div className="flex items-center gap-4">
-                                            {campaignForm.image && (
-                                                <img src={campaignForm.image} alt="Preview" className="w-24 h-24 object-cover rounded-xl border border-gray-200" />
-                                            )}
-                                            <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
-                                                <Upload className="w-5 h-5 text-gray-500" />
-                                                <span className="text-sm font-medium text-gray-700">Chọn ảnh</span>
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    onChange={async (e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) {
-                                                            try {
-                                                                setIsSubmitting(true);
-                                                                const url = await uploadImage(file);
-                                                                setCampaignForm({ ...campaignForm, image: url });
-                                                            } catch (error) {
-                                                                alert("Lỗi upload ảnh");
-                                                            } finally {
-                                                                setIsSubmitting(false);
-                                                            }
-                                                        }
-                                                    }}
-                                                />
-                                            </label>
+
+                            {pendingCampaigns.length === 0 ? (
+                                <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-2xl border border-gray-100">
+                                    Không có dự án nào đang chờ duyệt.
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {pendingCampaigns.map(campaign => (
+                                        <div key={campaign.id} className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                                            <div className="flex items-start gap-4 mb-4">
+                                                <img src={campaign.image} alt={campaign.title} className="w-24 h-24 rounded-xl object-cover border border-gray-200" />
+                                                <div className="flex-1">
+                                                    <h4 className="font-bold text-gray-900 text-lg">{campaign.title}</h4>
+                                                    <p className="text-sm text-gray-500 mb-2">
+                                                        Mục tiêu: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(campaign.goal)}
+                                                    </p>
+                                                    <p className="text-sm text-gray-500">
+                                                        Ngày kết thúc: {campaign.dateEnd instanceof Timestamp ? campaign.dateEnd.toDate().toLocaleDateString('vi-VN') : ""}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white p-4 rounded-xl border border-gray-100 mb-6">
+                                                <h5 className="text-sm font-bold text-gray-700 mb-2">Mô tả chi tiết:</h5>
+                                                <p className="text-gray-600 whitespace-pre-wrap">{campaign.description}</p>
+                                            </div>
+
+                                            <div className="flex gap-3 pt-4 border-t border-gray-200">
+                                                <button
+                                                    onClick={() => handleApproveCampaign(campaign, 'approved')}
+                                                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <CheckCircle className="w-4 h-4" />
+                                                    Duyệt dự án
+                                                </button>
+                                                <button
+                                                    onClick={() => handleApproveCampaign(campaign, 'rejected')}
+                                                    className="flex-1 bg-red-50 text-red-600 px-4 py-2 rounded-xl font-medium hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <XCircle className="w-4 h-4" />
+                                                    Từ chối
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="space-y-2 md:col-span-2">
-                                        <label className="text-sm font-medium text-gray-700">Mô tả chi tiết</label>
-                                        <textarea
-                                            required
-                                            rows={5}
-                                            value={campaignForm.description}
-                                            onChange={(e) => setCampaignForm({ ...campaignForm, description: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
-                                            placeholder="Nội dung chi tiết về dự án..."
-                                        />
-                                    </div>
+                                    ))}
                                 </div>
-                                <div className="flex justify-end">
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                        className="bg-pink-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-pink-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-                                    >
-                                        {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                                        Tạo dự án
-                                    </button>
-                                </div>
-                            </form>
+                            )}
                         </div>
                     )}
 
@@ -679,9 +623,8 @@ export default function AdminDashboard() {
                                                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
                                             >
                                                 <option value="Hoạt động">Hoạt động</option>
-                                                <option value="Dự án">Dự án</option>
-                                                <option value="Báo cáo">Báo cáo</option>
-                                                <option value="Sự kiện">Sự kiện</option>
+                                                <option value="Cập nhật">Cập nhật</option>
+                                                <option value="Câu chuyện">Câu chuyện</option>
                                             </select>
                                         </div>
                                         <div className="space-y-2">
@@ -805,6 +748,63 @@ export default function AdminDashboard() {
                                                     className="flex-1 bg-red-50 text-red-600 px-4 py-2 rounded-xl font-medium hover:bg-red-100 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                                                 >
                                                     {processingPost === post.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                                                    Từ chối
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {activeTab === "org_requests" && (
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                <Building2 className="w-5 h-5 text-pink-600" /> Duyệt đăng ký tổ chức
+                            </h2>
+
+                            {orgRequests.length === 0 ? (
+                                <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-2xl border border-gray-100">
+                                    Không có yêu cầu đăng ký tổ chức nào.
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {orgRequests.map(req => (
+                                        <div key={req.id} className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                                            <div className="flex items-center gap-4 mb-4">
+                                                {req.logo ? (
+                                                    <img src={req.logo} alt={req.organizationName} className="w-16 h-16 rounded-xl object-cover border border-gray-200" />
+                                                ) : (
+                                                    <div className="w-16 h-16 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600">
+                                                        <Building2 className="w-8 h-8" />
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900 text-lg">{req.organizationName}</h4>
+                                                    <p className="text-sm text-gray-500">
+                                                        Ngày gửi: {req.createdAt?.toDate ? req.createdAt.toDate().toLocaleString('vi-VN') : ""}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white p-4 rounded-xl border border-gray-100 mb-6">
+                                                <h5 className="text-sm font-bold text-gray-700 mb-2">Mô tả hoạt động:</h5>
+                                                <p className="text-gray-600 whitespace-pre-wrap">{req.description}</p>
+                                            </div>
+
+                                            <div className="flex gap-3 pt-4 border-t border-gray-200">
+                                                <button
+                                                    onClick={() => handleApproveOrgRequest(req, 'approved')}
+                                                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <CheckCircle className="w-4 h-4" />
+                                                    Duyệt tổ chức
+                                                </button>
+                                                <button
+                                                    onClick={() => handleApproveOrgRequest(req, 'rejected')}
+                                                    className="flex-1 bg-red-50 text-red-600 px-4 py-2 rounded-xl font-medium hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <XCircle className="w-4 h-4" />
                                                     Từ chối
                                                 </button>
                                             </div>
