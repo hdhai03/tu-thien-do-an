@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { Heart, Users, Clock, ChevronRight, ShieldCheck, TrendingUp, CheckCircle2, Building2 } from "lucide-react";
-import { formatCurrency } from "../lib/utils";
+import { formatCurrency, formatCompactNumber } from "../lib/utils";
 import type { Campaign } from "../types";
 import type { NewsItem } from "../types";
 import { collection, getDocs, Timestamp } from "firebase/firestore";
@@ -148,7 +148,7 @@ export default function Home() {
           {[
             {
               label: "Tổng tiền quyên góp",
-              value: new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(stats.totalRaised),
+              value: formatCompactNumber(stats.totalRaised),
               icon: TrendingUp,
               iconColor: "text-pink-600",
               bgColor: "bg-pink-100",
@@ -156,7 +156,7 @@ export default function Home() {
             },
             {
               label: "Lượt người tham gia",
-              value: new Intl.NumberFormat('en-US', { notation: "compact", maximumFractionDigits: 1 }).format(stats.totalDonors),
+              value: formatCompactNumber(stats.totalDonors),
               icon: Users,
               iconColor: "text-pink-600",
               bgColor: "bg-pink-100",
@@ -238,10 +238,11 @@ export default function Home() {
                       <div className="w-full bg-gray-100 h-2 rounded-full mb-3">
                         <div className="bg-pink-600 h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
                       </div>
-                      <div className="flex justify-between items-center text-sm mb-5">
+                      <div className="flex justify-between items-end text-sm mb-5">
                         <div>
-                          <span className="block text-[10px] text-gray-400 font-bold uppercase mb-0.5">Đã quyên góp</span>
+                          <span className="block text-[10px] text-gray-400 font-bold uppercase mb-0.5">Đã quyên góp / Mục tiêu</span>
                           <span className="font-bold text-pink-600 text-base">{formatCurrency(campaign.raised)}</span>
+                          <span className="text-gray-400 text-xs ml-1">/ {formatCurrency(campaign.goal)}</span>
                         </div>
                         <span className="text-gray-500 font-semibold bg-gray-50 px-2 py-1 rounded-md text-xs">Còn {campaign.daysLeft} ngày</span>
                       </div>

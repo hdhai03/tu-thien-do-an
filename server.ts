@@ -56,14 +56,21 @@ async function startServer() {
   // API Upload ảnh đơn giản
   app.post("/api/upload", async (req, res) => {
     try {
-      const fileStr = req.body.image; // Gửi ảnh dạng Base64 từ Frontend
+      let fileStr = req.body.image; // Gửi ảnh dạng Base64 từ Frontend
+
+      // Hack for PDF: change mime type to text/plain so Cloudinary doesn't block delivery
+      if (fileStr.startsWith('data:application/pdf')) {
+        fileStr = fileStr.replace('data:application/pdf', 'data:text/plain');
+      }
+
       const uploadResponse = await cloudinary.uploader.upload(fileStr, {
         folder: 'nuoi_em', // Lưu vào thư mục nuoi_em
+        resource_type: 'auto', // Tự động nhận diện loại file (image, video, raw cho pdf)
       });
       res.json({ url: uploadResponse.secure_url });
     } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'Lỗi khi upload ảnh' });
+      res.status(500).json({ error: 'Lỗi khi upload file' });
     }
   });
 
@@ -90,7 +97,7 @@ async function startServer() {
         amount: Number(amount),
         description: `Quyen gop ${orderCode}`,
         // URL này dùng để quay về trang web sau khi khách thanh toán xong (về Frontend)
-        returnUrl: `https://adaline-prospectless-barb.ngrok-free.dev/du-an/${campaignId}`,
+        returnUrl: `https://adaline-prospectless-barb.ngrok-free.dev/quyen-gop-thanh-cong?campaignId=${campaignId}`,
         cancelUrl: `https://adaline-prospectless-barb.ngrok-free.dev/du-an/${campaignId}`,
       };
 
@@ -143,11 +150,23 @@ async function startServer() {
             donors: admin.firestore.FieldValue.increment(1)
           });
 
-          // C. XÓA dữ liệu tạm ở pending_donations
+          // C. Cập nhật số tiền cho Tổ chức (nếu có)
+          const campaignDoc = await campaignRef.get();
+          if (campaignDoc.exists) {
+            const campaignData = campaignDoc.data();
+            if (campaignData?.organizationId) {
+              const orgRef = db.collection("organizations").doc(campaignData.organizationId);
+              batch.update(orgRef, {
+                totalRaised: admin.firestore.FieldValue.increment(data.amount)
+              });
+            }
+          }
+
+          // D. XÓA dữ liệu tạm ở pending_donations
           batch.delete(pendingRef);
 
           await batch.commit();
-          console.log(`✅ Đã chuyển đơn ${orderCode} sang chính thức và cập nhật Campaign.`);
+          console.log(`✅ Đã chuyển đơn ${orderCode} sang chính thức và cập nhật Campaign/Organization.`);
         } else {
           console.warn(`⚠️ Không tìm thấy đơn tạm: ${orderCode}`);
         }

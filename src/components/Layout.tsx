@@ -1,13 +1,14 @@
 import { Outlet, Link, NavLink, useNavigate } from "react-router-dom";
 import { Heart, Search, Menu, User, Bell, LogOut, CheckCircle, MessageCircle, FileText, Star, Building2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { collection, query, where, orderBy, onSnapshot, updateDoc, doc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import type { Notification } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
 import OrganizationRequestModal from "./OrganizationRequestModal";
+import ChatWidget from "./ChatWidget";
 
 export default function Layout() {
   const { user, logout, isAuthenticated } = useAuth();
@@ -17,6 +18,8 @@ export default function Layout() {
   const [showOrgModal, setShowOrgModal] = useState(false);
   const [activeNotifTab, setActiveNotifTab] = useState<'system' | 'personal'>('system');
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const systemNotifs = notifications.filter(n => ['new_campaign', 'new_news'].includes(n.type));
   const personalNotifs = notifications.filter(n => ['approved', 'like', 'comment'].includes(n.type));
@@ -44,7 +47,21 @@ export default function Layout() {
       setNotifications(notifs);
     });
 
-    return () => unsubscribe();
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setShowNotifDropdown(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      unsubscribe();
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, [isAuthenticated, user]);
 
   const handleLogout = () => {
@@ -89,16 +106,16 @@ export default function Layout() {
               <nav className="hidden md:flex items-center gap-6">
                 <NavLink to="/" className={({ isActive }) => `text-sm font-semibold py-5 transition-colors ${isActive ? 'text-pink-600 border-b-2 border-pink-600' : 'text-gray-600 hover:text-pink-600'}`}>Trang chủ</NavLink>
                 <NavLink to="/du-an" className={({ isActive }) => `text-sm font-semibold py-5 transition-colors ${isActive ? 'text-pink-600 border-b-2 border-pink-600' : 'text-gray-600 hover:text-pink-600'}`}>Dự án</NavLink>
-                <NavLink to="/cong-dong" className={({ isActive }) => `text-sm font-semibold py-5 transition-colors ${isActive ? 'text-pink-600 border-b-2 border-pink-600' : 'text-gray-600 hover:text-pink-600'}`}>Cộng đồng</NavLink>
                 <NavLink to="/to-chuc" className={({ isActive }) => `text-sm font-semibold py-5 transition-colors ${isActive ? 'text-pink-600 border-b-2 border-pink-600' : 'text-gray-600 hover:text-pink-600'}`}>Tổ chức</NavLink>
                 <NavLink to="/minh-bach" className={({ isActive }) => `text-sm font-semibold py-5 transition-colors ${isActive ? 'text-pink-600 border-b-2 border-pink-600' : 'text-gray-600 hover:text-pink-600'}`}>Minh bạch</NavLink>
+                <NavLink to="/cong-dong" className={({ isActive }) => `text-sm font-semibold py-5 transition-colors ${isActive ? 'text-pink-600 border-b-2 border-pink-600' : 'text-gray-600 hover:text-pink-600'}`}>Cộng đồng</NavLink>
               </nav>
             </div>
 
             {/* Actions */}
             <div className="flex items-center gap-4">
               {isAuthenticated && user && (
-                <div className="relative">
+                <div className="relative" ref={notifRef}>
                   <button
                     onClick={() => setShowNotifDropdown(!showNotifDropdown)}
                     className="p-2 text-gray-500 hover:text-pink-600 transition-colors rounded-full hover:bg-pink-50 hidden sm:block relative"
@@ -189,7 +206,7 @@ export default function Layout() {
               )}
 
               {isAuthenticated && user ? (
-                <div className="relative">
+                <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setShowDropdown(!showDropdown)}
                     className="flex items-center gap-2 bg-pink-50 text-pink-600 px-3 py-1.5 rounded-full font-medium text-sm hover:bg-pink-100 transition-colors"
@@ -298,6 +315,7 @@ export default function Layout() {
         isOpen={showOrgModal}
         onClose={() => setShowOrgModal(false)}
       />
+      <ChatWidget />
     </div>
   );
 }

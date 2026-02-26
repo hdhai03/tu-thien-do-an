@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { collection, getDocs, addDoc, Timestamp, query, where, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, Timestamp, query, where, updateDoc, doc, deleteDoc, increment } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { Building2, Plus, List, Edit, Trash2, Loader2, Upload, Image as ImageIcon } from "lucide-react";
 import { uploadImage } from "../lib/uploadImage";
@@ -124,8 +124,15 @@ export default function OrganizationDashboard() {
           status: "pending",
           dateCreated: Timestamp.now(),
         });
+
+        // Update campaign count for organization
+        await updateDoc(doc(db, "organizations", organization.id), {
+          campaignCount: increment(1)
+        });
+
         alert("Tạo dự án thành công! Vui lòng chờ admin duyệt.");
         setCampaigns(prev => [{ id: docRef.id, ...campaignData, raised: 0, donors: 0, status: "pending", dateCreated: Timestamp.now() } as Campaign, ...prev]);
+        setOrganization(prev => prev ? { ...prev, campaignCount: (prev.campaignCount || 0) + 1 } : prev);
       }
       setCampaignForm({ title: "", description: "", goal: "", image: "", category: "Giáo dục", dateEnd: "" });
       setActiveTab("campaigns");
@@ -141,6 +148,15 @@ export default function OrganizationDashboard() {
     if (!window.confirm("Bạn có chắc chắn muốn xoá dự án này?")) return;
     try {
       await deleteDoc(doc(db, "campaigns", id));
+
+      // Update campaign count for organization
+      if (organization) {
+        await updateDoc(doc(db, "organizations", organization.id), {
+          campaignCount: increment(-1)
+        });
+        setOrganization(prev => prev ? { ...prev, campaignCount: Math.max(0, (prev.campaignCount || 0) - 1) } : prev);
+      }
+
       setCampaigns(prev => prev.filter(c => c.id !== id));
       alert("Xoá dự án thành công!");
     } catch (error) {

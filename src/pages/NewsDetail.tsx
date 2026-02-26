@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Clock, ChevronLeft, Facebook, Twitter, Link as LinkIcon, AlertCircle } from "lucide-react";
+import { Clock, ChevronLeft, Facebook, Link as LinkIcon, AlertCircle } from "lucide-react";
 import { doc, getDoc, collection, query, limit, getDocs, where, Timestamp } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
@@ -24,7 +24,7 @@ export default function NewsDetail() {
   useEffect(() => {
     const fetchArticleData = async () => {
       if (!id) return;
-      
+
       try {
         setLoading(true);
         // 1. Lấy chi tiết bài viết hiện tại
@@ -46,7 +46,7 @@ export default function NewsDetail() {
             .map(d => ({ id: d.id, ...d.data() } as NewsItem))
             .filter(item => item.id !== id)
             .slice(0, 2);
-          
+
           setRelatedNews(relatedData);
         }
       } catch (error) {
@@ -100,7 +100,7 @@ export default function NewsDetail() {
             <ChevronLeft className="w-4 h-4 mr-1" />
             Quay lại danh sách tin tức
           </Link>
-          
+
           <div className="flex items-center gap-3 mb-6">
             <span className="px-3 py-1 rounded-full bg-pink-50 text-pink-600 text-xs font-bold uppercase tracking-wider">
               {article.category}
@@ -110,11 +110,11 @@ export default function NewsDetail() {
               {formatDate(article.date)}
             </div>
           </div>
-          
+
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
             {article.title}
           </h1>
-          
+
           <div className="flex items-center justify-between py-6 border-t border-gray-100 mt-8">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 font-bold">
@@ -125,16 +125,27 @@ export default function NewsDetail() {
                 <div className="text-xs text-gray-500">Tác giả</div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500 mr-2 hidden sm:inline-block">Chia sẻ:</span>
-              <button className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all">
+              <button
+                onClick={() => {
+                  const url = encodeURIComponent(window.location.href);
+                  window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400');
+                }}
+                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all"
+                title="Chia sẻ lên Facebook"
+              >
                 <Facebook className="w-4 h-4" />
               </button>
-              <button className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-sky-50 hover:text-sky-500 transition-all">
-                <Twitter className="w-4 h-4" />
-              </button>
-              <button onClick={() => navigator.clipboard.writeText(window.location.href)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-all">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  alert("Đã sao chép đường dẫn!");
+                }}
+                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-all"
+                title="Sao chép liên kết"
+              >
                 <LinkIcon className="w-4 h-4" />
               </button>
             </div>
@@ -146,17 +157,17 @@ export default function NewsDetail() {
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 mt-8">
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-12">
           <div className="w-full aspect-video relative">
-            <img 
-              src={article.image} 
+            <img
+              src={article.image}
               alt={article.title}
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
             />
           </div>
-          
+
           <div className="p-8 md:p-12 lg:p-16">
             {/* Render HTML Content từ Firebase */}
-            <div 
+            <div
               className="prose prose-lg prose-pink max-w-none text-gray-700 leading-relaxed
                 prose-headings:font-bold prose-headings:text-gray-900 prose-headings:mt-10 prose-headings:mb-6
                 prose-h3:text-2xl
@@ -167,7 +178,7 @@ export default function NewsDetail() {
             />
           </div>
         </div>
-        
+
         {/* Related News Section */}
         {relatedNews.length > 0 && (
           <div>
@@ -176,9 +187,9 @@ export default function NewsDetail() {
               {relatedNews.map((item) => (
                 <Link to={`/tin-tuc/${item.id}`} key={item.id} className="group flex flex-col bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
                   <div className="relative h-48 overflow-hidden">
-                    <img 
-                      src={item.image} 
-                      alt={item.title} 
+                    <img
+                      src={item.image}
+                      alt={item.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       referrerPolicy="no-referrer"
                     />

@@ -8,6 +8,7 @@ import OrganizationDetail from "./pages/OrganizationDetail";
 import Transparency from "./pages/Transparency";
 import Login from "./pages/Login";
 import DonationHistory from "./pages/DonationHistory";
+import DonationSuccess from "./pages/DonationSuccess";
 import Register from "./pages/Register";
 import News from "./pages/News";
 import NewsDetail from "./pages/NewsDetail";
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="dang-nhap" element={<Login />} />
             <Route path="dang-ky" element={<Register />} />
             <Route path="lich-su-quyen-gop" element={<DonationHistory />} />
+            <Route path="quyen-gop-thanh-cong" element={<DonationSuccess />} />
             <Route path="du-an/:id" element={<CampaignDetail />} />
             <Route path="admin" element={<AdminDashboard />} />
             <Route path="organization" element={<OrganizationDashboard />} />

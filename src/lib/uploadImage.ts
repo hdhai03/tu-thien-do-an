@@ -14,7 +14,7 @@ export const uploadImage = async (file: File): Promise<string> => {
                 });
 
                 if (!response.ok) {
-                    throw new Error("Lỗi upload ảnh");
+                    throw new Error("Lỗi upload file");
                 }
 
                 const data = await response.json();

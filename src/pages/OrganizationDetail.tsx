@@ -208,10 +208,15 @@ export default function OrganizationDetail() {
                                         {campaign.title}
                                     </h3>
                                     <div className="mt-auto pt-4">
-                                        <div className="flex justify-between text-sm mb-2">
-                                            <span className="font-bold text-pink-600">
-                                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(campaign.raised)}
-                                            </span>
+                                        <div className="flex justify-between items-end text-sm mb-2">
+                                            <div>
+                                                <span className="font-bold text-pink-600">
+                                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(campaign.raised)}
+                                                </span>
+                                                <span className="text-gray-400 text-xs ml-1">
+                                                    / {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(campaign.goal)}
+                                                </span>
+                                            </div>
                                             <span className="text-gray-500">
                                                 {Math.round((campaign.raised / campaign.goal) * 100)}%
                                             </span>

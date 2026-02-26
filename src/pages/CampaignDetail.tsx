@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Heart, Users, Clock, ShieldCheck, ChevronRight,
-  Trophy, History, User, Search, ChevronLeft, X, AlertCircle, Loader2
+  Trophy, History, User, Search, ChevronLeft, X, AlertCircle, Loader2, Share2, Link as LinkIcon, Facebook
 } from "lucide-react";
 import { formatCurrency, cn } from "../lib/utils";
 import type { Campaign } from "../types";
@@ -35,6 +35,7 @@ export default function CampaignDetail() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [donationForm, setDonationForm] = useState({
@@ -224,6 +225,18 @@ export default function CampaignDetail() {
     }
   };
 
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    alert("Đã sao chép đường dẫn!");
+    setIsShareModalOpen(false);
+  };
+
+  const handleShareFacebook = () => {
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400');
+    setIsShareModalOpen(false);
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-600"></div>
@@ -238,7 +251,8 @@ export default function CampaignDetail() {
     </div>
   );
 
-  const progress = Math.min(100, (campaign.raised / campaign.goal) * 100);
+  const progress = (campaign.raised / campaign.goal) * 100;
+  const progressWidth = Math.min(100, progress);
   const campaignImages = [campaign.image, ...(campaign.storyImages || [])];
   const filteredDonors = recentDonations.filter(d =>
     (d.fullname || "").toLowerCase().includes(searchQuery.toLowerCase())
@@ -379,11 +393,24 @@ export default function CampaignDetail() {
                 </div>
               </div>
 
+              {campaign.daysLeft > 0 ? (
+                <button
+                  onClick={() => setIsDonationModalOpen(true)}
+                  className="w-full bg-pink-600 text-white font-bold py-4 rounded-2xl hover:bg-pink-700 transition-all shadow-lg shadow-pink-100 flex items-center justify-center gap-2"
+                >
+                  <Heart className="w-5 h-5 fill-current" /> QUYÊN GÓP NGAY
+                </button>
+              ) : (
+                <div className={`w-full font-bold py-4 rounded-2xl flex items-center justify-center gap-2 text-center px-2 ${campaign.raised >= campaign.goal ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {campaign.raised >= campaign.goal ? "Đã hoàn thành chỉ tiêu" : "Dự án đã hết hạn quyên góp"}
+                </div>
+              )}
+
               <button
-                onClick={() => setIsDonationModalOpen(true)}
-                className="w-full bg-pink-600 text-white font-bold py-4 rounded-2xl hover:bg-pink-700 transition-all shadow-lg shadow-pink-100 flex items-center justify-center gap-2"
+                onClick={() => setIsShareModalOpen(true)}
+                className="w-full bg-white text-gray-700 border border-gray-200 font-bold py-3 rounded-2xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
               >
-                <Heart className="w-5 h-5 fill-current" /> QUYÊN GÓP NGAY
+                <Share2 className="w-5 h-5" /> CHIA SẺ
               </button>
 
               {/* TOP NHÀ HẢO TÂM */}
@@ -422,6 +449,45 @@ export default function CampaignDetail() {
           </div>
         </div>
       </div>
+
+      {/* MODAL CHIA SẺ */}
+      {isShareModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900">Chia sẻ dự án</h3>
+              <button onClick={() => setIsShareModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-6 h-6" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <button
+                onClick={handleCopyLink}
+                className="w-full flex items-center gap-3 p-4 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                  <LinkIcon className="w-5 h-5 text-gray-600" />
+                </div>
+                <div>
+                  <div className="font-bold text-gray-900">Sao chép liên kết</div>
+                  <div className="text-sm text-gray-500">Chia sẻ qua tin nhắn, email...</div>
+                </div>
+              </button>
+
+              <button
+                onClick={handleShareFacebook}
+                className="w-full flex items-center gap-3 p-4 rounded-xl border border-blue-100 bg-blue-50 hover:bg-blue-100 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
+                  <Facebook className="w-5 h-5 text-white fill-current" />
+                </div>
+                <div>
+                  <div className="font-bold text-blue-900">Chia sẻ lên Facebook</div>
+                  <div className="text-sm text-blue-700">Lan toả dự án tới bạn bè</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL QUYÊN GÓP (Giữ nguyên form của bạn) */}
       {isDonationModalOpen && (

@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { X, Loader2, Building2 } from "lucide-react";
+import { X, Loader2, Building2, Upload, FileText } from "lucide-react";
 import { collection, addDoc, Timestamp, query, where, getDocs } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../context/AuthContext";
+import { uploadImage } from "../lib/uploadImage";
 
 interface OrganizationRequestModalProps {
     isOpen: boolean;
@@ -13,6 +14,8 @@ export default function OrganizationRequestModal({ isOpen, onClose }: Organizati
     const { user } = useAuth();
     const [orgName, setOrgName] = useState("");
     const [description, setDescription] = useState("");
+    const [logo, setLogo] = useState("");
+    const [document, setDocument] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [message, setMessage] = useState({ type: "", text: "" });
 
@@ -21,6 +24,16 @@ export default function OrganizationRequestModal({ isOpen, onClose }: Organizati
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
+
+        if (!logo) {
+            setMessage({ type: "error", text: "Vui lòng tải lên ảnh logo tổ chức." });
+            return;
+        }
+
+        if (!document) {
+            setMessage({ type: "error", text: "Vui lòng tải lên giấy tờ chứng thực (PDF)." });
+            return;
+        }
 
         setIsSubmitting(true);
         setMessage({ type: "", text: "" });
@@ -40,6 +53,8 @@ export default function OrganizationRequestModal({ isOpen, onClose }: Organizati
                 userId: user.UID,
                 organizationName: orgName,
                 description: description,
+                logo: logo,
+                document: document,
                 status: "pending",
                 createdAt: Timestamp.now(),
             });
@@ -49,6 +64,8 @@ export default function OrganizationRequestModal({ isOpen, onClose }: Organizati
                 onClose();
                 setOrgName("");
                 setDescription("");
+                setLogo("");
+                setDocument("");
                 setMessage({ type: "", text: "" });
             }, 2000);
         } catch (error) {
@@ -91,6 +108,78 @@ export default function OrganizationRequestModal({ isOpen, onClose }: Organizati
                                 placeholder="Nhập tên tổ chức..."
                             />
                         </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Ảnh logo</label>
+                            <div className="flex items-center gap-4">
+                                {logo && (
+                                    <img src={logo} alt="Preview" className="w-16 h-16 object-cover rounded-xl border border-gray-200" />
+                                )}
+                                <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                                    <Upload className="w-5 h-5 text-gray-500" />
+                                    <span className="text-sm font-medium text-gray-700">Chọn ảnh</span>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                try {
+                                                    setIsSubmitting(true);
+                                                    const url = await uploadImage(file);
+                                                    setLogo(url);
+                                                } catch (error) {
+                                                    alert("Lỗi upload ảnh");
+                                                } finally {
+                                                    setIsSubmitting(false);
+                                                }
+                                            }
+                                        }}
+                                    />
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Giấy tờ chứng thực (PDF)</label>
+                            <div className="flex items-center gap-4">
+                                {document && (
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-pink-50 text-pink-700 rounded-xl border border-pink-100">
+                                        <FileText className="w-5 h-5" />
+                                        <span className="text-sm font-medium truncate max-w-[150px]">Đã tải lên</span>
+                                    </div>
+                                )}
+                                <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                                    <Upload className="w-5 h-5 text-gray-500" />
+                                    <span className="text-sm font-medium text-gray-700">Chọn file PDF</span>
+                                    <input
+                                        type="file"
+                                        accept="application/pdf"
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                if (file.type !== "application/pdf") {
+                                                    alert("Vui lòng chọn file định dạng PDF");
+                                                    return;
+                                                }
+                                                try {
+                                                    setIsSubmitting(true);
+                                                    const url = await uploadImage(file);
+                                                    setDocument(url);
+                                                } catch (error) {
+                                                    alert("Lỗi upload file");
+                                                } finally {
+                                                    setIsSubmitting(false);
+                                                }
+                                            }
+                                        }}
+                                    />
+                                </label>
+                            </div>
+                            <p className="text-xs text-gray-500">Tải lên giấy phép hoạt động hoặc quyết định thành lập tổ chức.</p>
+                        </div>
+
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Mô tả hoạt động</label>
                             <textarea

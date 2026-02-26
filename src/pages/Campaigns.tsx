@@ -225,7 +225,8 @@ export default function Campaigns() {
         ) : filteredCampaigns.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredCampaigns.map((campaign) => {
-              const progress = Math.min(100, (campaign.raised / campaign.goal) * 100);
+              const progress = (campaign.raised / campaign.goal) * 100;
+              const progressWidth = Math.min(100, progress);
               return (
                 <Link to={`/du-an/${campaign.id}`} key={campaign.id} className="group flex flex-col bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:shadow-pink-900/5 hover:-translate-y-1 transition-all duration-300">
                   <div className="relative h-48 overflow-hidden">
@@ -259,7 +260,7 @@ export default function Campaigns() {
                         <span className="text-gray-500">{Math.round(progress)}%</span>
                       </div>
                       <div className="w-full bg-gray-100 rounded-full h-1.5 mb-4 overflow-hidden">
-                        <div className="bg-pink-600 h-1.5 rounded-full transition-all duration-1000" style={{ width: `${progress}%` }}></div>
+                        <div className="bg-pink-600 h-1.5 rounded-full transition-all duration-1000" style={{ width: `${progressWidth}%` }}></div>
                       </div>
                       <div className="flex items-center justify-between text-[13px] text-gray-500 mb-5">
                         <div className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /><span>{campaign.donors}</span></div>

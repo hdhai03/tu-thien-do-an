@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs, addDoc, Timestamp, query, where, updateDoc, doc, deleteDoc, orderBy, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import { BarChart3, Plus, FileText, Heart, Image as ImageIcon, Loader2, CheckCircle, XCircle, Trash2, Edit, List, Upload, Building2 } from "lucide-react";
+import { BarChart3, Plus, FileText, Heart, Image as ImageIcon, Loader2, CheckCircle, XCircle, Trash2, Edit, List, Upload, Building2, Download, MessageCircle, Send } from "lucide-react";
 import { uploadImage } from "../lib/uploadImage";
 import type { Post, Campaign, NewsItem } from "../types";
 
@@ -20,8 +20,13 @@ export default function AdminDashboard() {
     const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([]);
     const [allNews, setAllNews] = useState<NewsItem[]>([]);
     const [allPosts, setAllPosts] = useState<Post[]>([]);
+    const [allOrgs, setAllOrgs] = useState<any[]>([]);
     const [orgRequests, setOrgRequests] = useState<any[]>([]);
     const [pendingCampaigns, setPendingCampaigns] = useState<Campaign[]>([]);
+    const [chats, setChats] = useState<any[]>([]);
+    const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+    const [chatMessages, setChatMessages] = useState<any[]>([]);
+    const [replyInput, setReplyInput] = useState("");
 
     // Edit states
     const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
@@ -88,12 +93,13 @@ export default function AdminDashboard() {
 
         const fetchAllData = async () => {
             try {
-                const [campaignsSnap, newsSnap, postsSnap, orgReqSnap, pendingCampSnap] = await Promise.all([
+                const [campaignsSnap, newsSnap, postsSnap, orgReqSnap, pendingCampSnap, orgsSnap] = await Promise.all([
                     getDocs(collection(db, "campaigns")),
                     getDocs(collection(db, "news")),
                     getDocs(query(collection(db, "posts"), where("status", "==", "approved"))),
                     getDocs(query(collection(db, "organization_requests"), where("status", "==", "pending"))),
-                    getDocs(query(collection(db, "campaigns"), where("status", "==", "pending")))
+                    getDocs(query(collection(db, "campaigns"), where("status", "==", "pending"))),
+                    getDocs(collection(db, "organizations"))
                 ]);
 
                 setAllCampaigns(campaignsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Campaign[]);
@@ -101,6 +107,7 @@ export default function AdminDashboard() {
                 setAllPosts(postsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Post[]);
                 setOrgRequests(orgReqSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
                 setPendingCampaigns(pendingCampSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Campaign[]);
+                setAllOrgs(orgsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             } catch (error) {
                 console.error("Error fetching all data:", error);
             } finally {
@@ -111,6 +118,22 @@ export default function AdminDashboard() {
         fetchStats();
         fetchPendingPosts();
         fetchAllData();
+
+        // Listen to chats
+        const chatsQuery = query(collection(db, "chats"), orderBy("updatedAt", "desc"));
+        const unsubscribeChats = import("firebase/firestore").then(({ onSnapshot }) => {
+            return onSnapshot(chatsQuery, (snapshot) => {
+                const chatsData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setChats(chatsData);
+            });
+        });
+
+        return () => {
+            unsubscribeChats.then(unsub => unsub());
+        };
     }, [isAuthenticated, user, navigate]);
 
     const handleApproveCampaign = async (campaign: Campaign, status: 'approved' | 'rejected') => {
@@ -250,6 +273,30 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleDeleteOrg = async (id: string, userId: string) => {
+        if (!window.confirm("Bạn có chắc chắn muốn xoá tổ chức này? Hành động này sẽ không thể hoàn tác.")) return;
+        try {
+            const batch = writeBatch(db);
+
+            // Delete organization document
+            batch.delete(doc(db, "organizations", id));
+
+            // Update user role back to 1 (normal user)
+            const usersSnap = await getDocs(query(collection(db, "users"), where("UID", "==", userId)));
+            if (!usersSnap.empty) {
+                const userDoc = usersSnap.docs[0];
+                batch.update(doc(db, "users", userDoc.id), { role: 1 });
+            }
+
+            await batch.commit();
+            setAllOrgs(prev => prev.filter(o => o.id !== id));
+            alert("Xoá tổ chức thành công!");
+        } catch (error) {
+            console.error("Lỗi xoá tổ chức:", error);
+            alert("Có lỗi xảy ra khi xoá tổ chức.");
+        }
+    };
+
     const handleEditCampaign = (campaign: Campaign) => {
         setCampaignForm({
             title: campaign.title,
@@ -298,6 +345,7 @@ export default function AdminDashboard() {
                     description: req.description,
                     userId: req.userId,
                     logo: req.logo || "",
+                    document: req.document || "",
                     campaignCount: 0,
                     totalRaised: 0,
                     createdAt: Timestamp.now()
@@ -321,6 +369,72 @@ export default function AdminDashboard() {
         } catch (error) {
             console.error("Lỗi xử lý yêu cầu:", error);
             alert("Có lỗi xảy ra.");
+        }
+    };
+
+    const handleViewDocument = async (e: React.MouseEvent, url: string) => {
+        e.preventDefault();
+        const newWindow = window.open('', '_blank');
+        if (!newWindow) {
+            alert("Trình duyệt của bạn đã chặn popup. Vui lòng cho phép popup để xem tài liệu.");
+            return;
+        }
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("Không thể tải tài liệu");
+            const blob = await response.blob();
+            const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+            const pdfUrl = URL.createObjectURL(pdfBlob);
+            newWindow.location.href = pdfUrl;
+        } catch (error) {
+            console.error("Lỗi khi tải tài liệu:", error);
+            // Fallback
+            newWindow.location.href = url;
+        }
+    };
+
+    const handleSelectChat = async (chatId: string) => {
+        setSelectedChatId(chatId);
+
+        // Mark as read for admin
+        await updateDoc(doc(db, "chats", chatId), { unreadAdmin: 0 });
+
+        const q = query(collection(db, "chats", chatId, "messages"), orderBy("createdAt", "asc"));
+        const unsubscribe = import("firebase/firestore").then(({ onSnapshot }) => {
+            return onSnapshot(q, (snapshot) => {
+                const msgs = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setChatMessages(msgs);
+            });
+        });
+    };
+
+    const handleReplyChat = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!replyInput.trim() || !selectedChatId) return;
+
+        const text = replyInput.trim();
+        setReplyInput("");
+
+        try {
+            const msgRef = collection(db, "chats", selectedChatId, "messages");
+            await addDoc(msgRef, {
+                text,
+                sender: "admin",
+                createdAt: Timestamp.now()
+            });
+
+            await updateDoc(doc(db, "chats", selectedChatId), {
+                lastMessage: text,
+                updatedAt: Timestamp.now(),
+                unreadUser: 1 // Increment in real app
+            });
+        } catch (error) {
+            console.error("Error replying to chat:", error);
+            alert("Có lỗi xảy ra khi gửi tin nhắn.");
         }
     };
 
@@ -395,6 +509,12 @@ export default function AdminDashboard() {
                         <List className="w-5 h-5" /> Quản lý bài viết
                     </button>
                     <button
+                        onClick={() => setActiveTab("manage_orgs")}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "manage_orgs" ? "bg-pink-50 text-pink-600" : "text-gray-600 hover:bg-gray-50"}`}
+                    >
+                        <Building2 className="w-5 h-5" /> Danh sách tổ chức
+                    </button>
+                    <button
                         onClick={() => setActiveTab("pending")}
                         className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "pending" ? "bg-pink-50 text-pink-600" : "text-gray-600 hover:bg-gray-50"}`}
                     >
@@ -418,6 +538,20 @@ export default function AdminDashboard() {
                         {orgRequests.length > 0 && (
                             <span className="bg-pink-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                                 {orgRequests.length}
+                            </span>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab("chats")}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "chats" ? "bg-pink-50 text-pink-600" : "text-gray-600 hover:bg-gray-50"}`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <MessageCircle className="w-5 h-5" /> Hỗ trợ trực tuyến
+                        </div>
+                        {chats.filter(c => c.unreadAdmin > 0).length > 0 && (
+                            <span className="bg-pink-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                {chats.filter(c => c.unreadAdmin > 0).length}
                             </span>
                         )}
                     </button>
@@ -792,6 +926,26 @@ export default function AdminDashboard() {
                                                 <p className="text-gray-600 whitespace-pre-wrap">{req.description}</p>
                                             </div>
 
+                                            {req.document && (
+                                                <div className="bg-white p-4 rounded-xl border border-gray-100 mb-6 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center text-pink-600">
+                                                            <FileText className="w-5 h-5" />
+                                                        </div>
+                                                        <div>
+                                                            <h5 className="text-sm font-bold text-gray-900">Giấy tờ chứng thực</h5>
+                                                            <p className="text-xs text-gray-500">Tài liệu đính kèm (PDF)</p>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => handleViewDocument(e, req.document)}
+                                                        className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium"
+                                                    >
+                                                        <Download className="w-4 h-4" /> Xem tài liệu
+                                                    </button>
+                                                </div>
+                                            )}
+
                                             <div className="flex gap-3 pt-4 border-t border-gray-200">
                                                 <button
                                                     onClick={() => handleApproveOrgRequest(req, 'approved')}
@@ -812,6 +966,138 @@ export default function AdminDashboard() {
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    )}
+                    {activeTab === "manage_orgs" && (
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                <Building2 className="w-5 h-5 text-pink-600" /> Danh sách tổ chức
+                            </h2>
+
+                            {allOrgs.length === 0 ? (
+                                <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-2xl border border-gray-100">
+                                    Chưa có tổ chức nào.
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {allOrgs.map(org => (
+                                        <div key={org.id} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex items-center justify-between gap-4">
+                                            <div className="flex items-center gap-4">
+                                                {org.logo ? (
+                                                    <img src={org.logo} alt={org.name} className="w-12 h-12 rounded-xl object-cover border border-gray-200" />
+                                                ) : (
+                                                    <div className="w-12 h-12 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600">
+                                                        <Building2 className="w-6 h-6" />
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900">{org.name}</h4>
+                                                    <p className="text-sm text-gray-500 line-clamp-1 max-w-md">{org.description}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleDeleteOrg(org.id, org.userId)}
+                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Xoá tổ chức"
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === "chats" && (
+                        <div className="h-[600px] flex flex-col md:flex-row gap-6">
+                            {/* Chat List */}
+                            <div className="w-full md:w-1/3 border border-gray-200 rounded-2xl overflow-hidden flex flex-col bg-white">
+                                <div className="p-4 border-b border-gray-200 bg-gray-50 font-bold text-gray-900 flex items-center justify-between">
+                                    <span>Danh sách Chat</span>
+                                    <span className="bg-pink-100 text-pink-600 text-xs px-2 py-1 rounded-full">{chats.length}</span>
+                                </div>
+                                <div className="flex-1 overflow-y-auto">
+                                    {chats.length === 0 ? (
+                                        <div className="p-4 text-center text-gray-500 text-sm">Chưa có cuộc trò chuyện nào.</div>
+                                    ) : (
+                                        <div className="divide-y divide-gray-100">
+                                            {chats.map(chat => (
+                                                <button
+                                                    key={chat.id}
+                                                    onClick={() => handleSelectChat(chat.id)}
+                                                    className={`w-full text-left p-4 hover:bg-gray-50 transition-colors flex items-start gap-3 ${selectedChatId === chat.id ? 'bg-pink-50/50' : ''}`}
+                                                >
+                                                    <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 font-bold shrink-0">
+                                                        {chat.userName?.charAt(0) || "U"}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex justify-between items-start mb-1">
+                                                            <h4 className="font-bold text-gray-900 text-sm truncate">{chat.userName || "Người dùng"}</h4>
+                                                            {chat.unreadAdmin > 0 && (
+                                                                <span className="w-2 h-2 bg-red-500 rounded-full mt-1.5 shrink-0"></span>
+                                                            )}
+                                                        </div>
+                                                        <p className={`text-xs truncate ${chat.unreadAdmin > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
+                                                            {chat.lastMessage || "Chưa có tin nhắn"}
+                                                        </p>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Chat Area */}
+                            <div className="w-full md:w-2/3 border border-gray-200 rounded-2xl overflow-hidden flex flex-col bg-white">
+                                {selectedChatId ? (
+                                    <>
+                                        <div className="p-4 border-b border-gray-200 bg-gray-50 font-bold text-gray-900 flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-pink-600">
+                                                {chats.find(c => c.id === selectedChatId)?.userName?.charAt(0) || "U"}
+                                            </div>
+                                            <span>{chats.find(c => c.id === selectedChatId)?.userName || "Người dùng"}</span>
+                                        </div>
+
+                                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/30">
+                                            {chatMessages.map(msg => (
+                                                <div key={msg.id} className={`flex ${msg.sender === "admin" ? "justify-end" : "justify-start"}`}>
+                                                    <div className={`max-w-[70%] p-3 rounded-2xl text-sm ${msg.sender === "admin" ? "bg-pink-600 text-white rounded-br-sm" : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm"}`}>
+                                                        {msg.text}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <form onSubmit={handleReplyChat} className="p-4 border-t border-gray-200 bg-white">
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={replyInput}
+                                                    onChange={(e) => setReplyInput(e.target.value)}
+                                                    placeholder="Nhập tin nhắn trả lời..."
+                                                    className="flex-1 bg-gray-50 border border-gray-200 rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+                                                />
+                                                <button
+                                                    type="submit"
+                                                    disabled={!replyInput.trim()}
+                                                    className="w-10 h-10 bg-pink-600 text-white rounded-full flex items-center justify-center hover:bg-pink-700 transition-colors disabled:opacity-50 shrink-0"
+                                                >
+                                                    <Send className="w-4 h-4 ml-1" />
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </>
+                                ) : (
+                                    <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+                                        <MessageCircle className="w-12 h-12 mb-2 opacity-20" />
+                                        <p>Chọn một cuộc trò chuyện để bắt đầu</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
