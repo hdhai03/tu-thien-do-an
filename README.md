@@ -15,129 +15,198 @@
 
 ---
 
-## 📑 Software Requirements Specification (SRS)
+## 🌟 Các chức năng chính (Key Features)
 
-### 1. Giới thiệu (Introduction)
-**Mục đích:** Xây dựng một cầu nối minh bạch giữa người cần giúp đỡ (thông qua các tổ chức) và người muốn giúp đỡ (nhà hảo tâm).
-**Phạm vi:** Hệ thống cho phép người dùng quyên góp, các tổ chức đăng dự án, và quản trị viên kiểm duyệt nội dung, hỗ trợ trực tuyến.
+Hệ thống phân chia người dùng thành 3 vai trò (Roles):
+- **Role 1 (Người dùng/Nhà hảo tâm):** Đăng ký/Đăng nhập, xem dự án, quyên góp, đăng bài cộng đồng, nâng cấp thành tổ chức, chat với AI/Admin, nhận thông báo.
+- **Role 2 (Tổ chức):** Bao gồm quyền của Role 1, có thêm quyền tạo dự án quyên góp, quản lý dự án của tổ chức.
+- **Role 0 (Quản trị viên - Admin):** Quản lý toàn bộ hệ thống, duyệt dự án, duyệt bài viết, duyệt tổ chức, đăng tin tức, chat hỗ trợ người dùng.
 
-### 2. Phân quyền người dùng (User Roles)
-Hệ thống chia làm 3 vai trò chính:
-1. **Người dùng (User - Role 1):** Người dùng thông thường, nhà hảo tâm.
-2. **Tổ chức (Organization - Role 2):** Các tổ chức từ thiện đã được xác thực.
-3. **Quản trị viên (Admin - Role 0):** Người quản lý toàn bộ hệ thống.
+### 1. Dành cho Khách (Guest)
+- Xem trang chủ, danh sách dự án, chi tiết dự án, tin tức, bài viết cộng đồng.
+- Chat với AI Assistant để được tư vấn (sử dụng RAG lấy dữ liệu thực tế từ hệ thống).
+- Đăng ký, đăng nhập.
 
-### 3. Yêu cầu chức năng (Functional Requirements)
+### 2. Dành cho Người dùng (User)
+- **Quyên góp:** Thực hiện quyên góp cho các dự án, để lại lời chúc.
+- **Cộng đồng:** Đăng bài viết chia sẻ (chờ duyệt), Like, Comment bài viết của người khác.
+- **Hồ sơ:** Xem lịch sử quyên góp, cập nhật thông tin cá nhân.
+- **Đăng ký Tổ chức:** Gửi yêu cầu nâng cấp tài khoản thành Tổ chức (cung cấp tên, mô tả, logo, giấy tờ chứng thực).
+- **Hỗ trợ:** Chat trực tiếp với Admin.
+- **Thông báo:** Nhận thông báo realtime khi dự án/bài viết/yêu cầu tổ chức được duyệt.
 
-#### 3.1. Module Xác thực & Tài khoản (Authentication)
-- Đăng ký, Đăng nhập bằng Email/Mật khẩu (Firebase Auth).
-- Quản lý hồ sơ cá nhân.
-- Nâng cấp tài khoản thành Tổ chức (Cần nộp giấy tờ chứng thực và chờ Admin duyệt).
+### 3. Dành cho Tổ chức (Organization)
+- **Quản lý dự án:** Tạo dự án quyên góp mới (cần Admin duyệt).
+- Theo dõi tiến độ quyên góp của các dự án do tổ chức quản lý.
 
-#### 3.2. Module Dự án Quyên góp (Campaigns)
-- **Tổ chức:** Tạo dự án mới (Tên, mô tả, mục tiêu, ngày kết thúc, ảnh bìa).
-- **Admin:** Kiểm duyệt dự án (Duyệt/Từ chối).
-- **Tự động hóa (Auto-post):** Tự động chia sẻ dự án lên Facebook Page ngay khi Admin duyệt thành công.
-- **Người dùng:** Xem danh sách dự án, tìm kiếm, lọc theo danh mục, và thực hiện quyên góp.
-
-#### 3.3. Module Cộng đồng & Tin tức (Community & News)
-- **Người dùng:** Đăng bài viết chia sẻ lên cộng đồng (Cần Admin duyệt).
-- **Admin:** Đăng tải tin tức, hoạt động của nền tảng. Quản lý, kiểm duyệt và xóa bài viết cộng đồng.
-
-#### 3.4. Module Tương tác & Hỗ trợ (Chat & Support)
-- **AI Chatbot (RAG):** Trợ lý ảo tích hợp Gemini AI, tự động đọc dữ liệu thực tế từ Firestore (các dự án đang chạy, thông tin tổ chức) để tư vấn chính xác cho người dùng.
-- **Live Chat:** Người dùng có thể chat trực tiếp với Admin.
-- **Admin Chat Dashboard:** Admin quản lý danh sách các cuộc hội thoại, nhận thông báo tin nhắn chưa đọc và trả lời người dùng theo thời gian thực.
-- *UI/UX:* Cửa sổ chat tự động đóng khi click ra ngoài vùng chat.
-
-#### 3.5. Module Thông báo (Notifications)
-- Hệ thống thông báo realtime (chuông thông báo) cho người dùng khi:
-  - Dự án mới được duyệt.
-  - Bài viết cộng đồng được duyệt.
-  - Yêu cầu tạo tổ chức được duyệt/từ chối.
-
-#### 3.6. Module Quản trị (Admin Dashboard)
-- Thống kê tổng quan: Số lượng dự án, tin tức, tổng số tiền quyên góp.
-- Quản lý & Kiểm duyệt: Dự án, Tin tức, Bài viết cộng đồng, Yêu cầu tổ chức.
-- Quản lý danh sách tổ chức từ thiện.
-
-### 4. Yêu cầu phi chức năng (Non-Functional Requirements)
-- **Giao diện (UI/UX):** Thiết kế Responsive, hoạt động tốt trên cả Mobile và Desktop. Sử dụng Tailwind CSS với phong cách hiện đại, thân thiện.
-- **Hiệu suất:** Tải trang nhanh, cập nhật dữ liệu realtime mượt mà thông qua Firestore `onSnapshot`.
-- **Bảo mật:** Dữ liệu được bảo vệ qua Firebase Security Rules. Các API Keys (Gemini, Facebook) được bảo mật qua Environment Variables.
+### 4. Dành cho Quản trị viên (Admin)
+- **Dashboard:** Xem thống kê tổng quan (số dự án, tin tức, tổng tiền quyên góp).
+- **Kiểm duyệt:**
+  - Duyệt/Từ chối dự án mới. **Tự động đăng bài lên Facebook Page** khi dự án được duyệt.
+  - Duyệt/Từ chối bài viết cộng đồng.
+  - Duyệt/Từ chối yêu cầu đăng ký Tổ chức.
+- **Quản lý nội dung:** Đăng tin tức mới, xóa dự án/tin tức/bài viết vi phạm.
+- **Quản lý tổ chức:** Xem danh sách tổ chức, xóa tổ chức (hạ quyền về User).
+- **Hỗ trợ trực tuyến:** Quản lý danh sách chat, trả lời tin nhắn của người dùng.
 
 ---
 
-## 📊 Sơ đồ thiết kế (UML Diagrams)
+## 🛡️ Yêu cầu phi chức năng (Non-Functional Requirements)
 
-### 1. Sơ đồ Use Case (Use Case Diagram)
-Mô tả các chức năng chính của hệ thống và các tác nhân (Actors) tương tác với hệ thống.
+1. **Giao diện (UI/UX):** Thiết kế Responsive, hoạt động mượt mà trên cả Mobile, Tablet và Desktop. Sử dụng Tailwind CSS với phong cách hiện đại, thân thiện, màu sắc ấm áp (Pink/Rose).
+2. **Hiệu suất:** Tải trang nhanh, cập nhật dữ liệu realtime mượt mà thông qua Firestore `onSnapshot` (Chat, Thông báo).
+3. **Bảo mật:** 
+   - Dữ liệu được bảo vệ qua Firebase Security Rules.
+   - Mật khẩu được mã hóa bởi Firebase Auth.
+   - Các API Keys (Gemini, Facebook) được bảo mật qua Environment Variables, không lộ trên client-side đối với các tác vụ nhạy cảm.
+4. **Tính khả dụng:** Hệ thống hoạt động 24/7, AI Chatbot luôn sẵn sàng hỗ trợ người dùng giải đáp thắc mắc.
+
+---
+
+## 📊 Phân tích thiết kế hệ thống (System Design & Analysis)
+
+### 1. Sơ đồ Use Case tổng quan (General Use Case Diagram)
 
 ```mermaid
 flowchart LR
     %% Actors
+    Guest([Khách])
     User([Người dùng])
     Org([Tổ chức])
     Admin([Quản trị viên])
     AI([AI Assistant])
     FB([Facebook API])
 
+    %% Inheritance
+    User --|> Guest
+    Org --|> User
+
     %% Use Cases
-    UC1(Xem dự án)
-    UC2(Quyên góp)
-    UC3(Đăng ký tổ chức)
-    UC4(Tạo dự án mới)
-    UC5(Duyệt dự án)
-    UC6(Đăng bài cộng đồng)
-    UC7(Duyệt bài cộng đồng)
-    UC8(Chat với AI RAG)
-    UC9(Chat với Admin)
-    UC10(Tự động đăng bài FB)
+    UC_View(Xem thông tin: Dự án, Tin tức, Cộng đồng)
+    UC_Auth(Đăng ký / Đăng nhập)
+    UC_ChatAI(Chat với AI RAG)
+    
+    UC_Donate(Quyên góp & Gửi lời chúc)
+    UC_PostComm(Đăng bài cộng đồng)
+    UC_Interact(Like, Comment bài viết)
+    UC_ReqOrg(Đăng ký trở thành Tổ chức)
+    UC_ChatAdmin(Chat với Admin)
+    UC_Profile(Quản lý hồ sơ & Lịch sử)
+
+    UC_CreateCamp(Tạo dự án quyên góp)
+    UC_ManageCamp(Quản lý dự án của tổ chức)
+
+    UC_ApproveCamp(Duyệt dự án)
+    UC_ApprovePost(Duyệt bài cộng đồng)
+    UC_ApproveOrg(Duyệt yêu cầu tổ chức)
+    UC_ManageNews(Quản lý Tin tức)
+    UC_ManageUsers(Quản lý Tổ chức)
+    UC_Support(Trả lời Chat người dùng)
+    UC_AutoPost(Tự động đăng bài Facebook)
 
     %% Relationships
-    User --> UC1
-    User --> UC2
-    User --> UC3
-    User --> UC6
-    User --> UC8
-    User --> UC9
+    Guest --> UC_View
+    Guest --> UC_Auth
+    Guest --> UC_ChatAI
 
-    Org --> UC1
-    Org --> UC4
-    Org --> UC8
-    Org --> UC9
+    User --> UC_Donate
+    User --> UC_PostComm
+    User --> UC_Interact
+    User --> UC_ReqOrg
+    User --> UC_ChatAdmin
+    User --> UC_Profile
 
-    Admin --> UC5
-    Admin --> UC7
-    Admin --> UC9
+    Org --> UC_CreateCamp
+    Org --> UC_ManageCamp
 
-    UC5 -.->|Kích hoạt| UC10
-    UC10 --> FB
-    UC8 <--> AI
+    Admin --> UC_ApproveCamp
+    Admin --> UC_ApprovePost
+    Admin --> UC_ApproveOrg
+    Admin --> UC_ManageNews
+    Admin --> UC_ManageUsers
+    Admin --> UC_Support
+
+    UC_ApproveCamp -.->|Include| UC_AutoPost
+    UC_AutoPost --> FB
+    UC_ChatAI <--> AI
 ```
 
-### 2. Sơ đồ Tuần tự (Sequence Diagram) - Duyệt dự án & Auto-post Facebook
-Mô tả luồng xử lý khi Admin duyệt một dự án và hệ thống tự động đăng bài lên Facebook.
+### 2. Sơ đồ Use Case phân rã (Decomposed Use Case Diagrams)
 
+#### 2.1. Phân rã Quản lý Dự án & Quyên góp
 ```mermaid
-sequenceDiagram
-    actor Admin
-    participant System as Hệ thống (React)
-    participant DB as Firestore
-    participant FB as Facebook API
+flowchart LR
+    User([Người dùng])
+    Org([Tổ chức])
+    Admin([Quản trị viên])
 
-    Admin->>System: Bấm "Duyệt dự án"
-    System->>DB: Cập nhật status = 'approved'
-    DB-->>System: Thành công
-    System->>DB: Tạo thông báo (Notification) cho users
-    System->>FB: POST /page_id/photos (Kèm ảnh, nội dung)
-    FB-->>System: Trả về Post ID (Thành công)
-    System-->>Admin: Hiển thị thông báo "Duyệt thành công"
+    UC_Search(Tìm kiếm & Lọc dự án)
+    UC_ViewDetail(Xem chi tiết dự án)
+    UC_Donate(Thực hiện chuyển khoản quyên góp)
+    UC_Create(Điền form tạo dự án)
+    UC_Approve(Kiểm duyệt dự án)
+    UC_Delete(Xóa dự án)
+
+    User --> UC_Search
+    User --> UC_ViewDetail
+    User --> UC_Donate
+
+    Org --> UC_Create
+    
+    Admin --> UC_Approve
+    Admin --> UC_Delete
 ```
 
-### 3. Sơ đồ Hoạt động (Activity Diagram) - Quá trình tạo và duyệt dự án
-Mô tả các bước từ khi Tổ chức tạo dự án đến khi dự án được hiển thị và chia sẻ.
+#### 2.2. Phân rã Quản lý Cộng đồng
+```mermaid
+flowchart LR
+    User([Người dùng])
+    Admin([Quản trị viên])
 
+    UC_CreatePost(Tạo bài viết mới)
+    UC_UploadImg(Tải ảnh đính kèm)
+    UC_Like(Thích bài viết)
+    UC_Comment(Bình luận bài viết)
+    UC_ApprovePost(Duyệt bài viết)
+    UC_DeletePost(Xóa bài viết vi phạm)
+
+    User --> UC_CreatePost
+    UC_CreatePost -.->|Include| UC_UploadImg
+    User --> UC_Like
+    User --> UC_Comment
+
+    Admin --> UC_ApprovePost
+    Admin --> UC_DeletePost
+```
+
+### 3. Quy trình nghiệp vụ (Business Processes)
+
+#### 3.1. Activity Diagram: Quy trình Quyên góp
+```mermaid
+stateDiagram-v2
+    [*] --> XemDanhSach: Người dùng truy cập trang Dự án
+    XemDanhSach --> XemChiTiet: Chọn 1 dự án
+    XemChiTiet --> BamQuyenGop: Bấm nút "Quyên góp ngay"
+    
+    state KiemTraDangNhap {
+        direction LR
+        ChuaDangNhap --> YeuCauDangNhap
+        DaDangNhap --> HienThiForm
+    }
+    
+    BamQuyenGop --> KiemTraDangNhap
+    YeuCauDangNhap --> [*]
+    
+    HienThiForm --> NhapThongTin: Nhập số tiền & Lời chúc
+    NhapThongTin --> QuetQR: Hiển thị mã QR thanh toán
+    QuetQR --> XacNhan: Bấm "Tôi đã chuyển khoản"
+    XacNhan --> LuuDB: Lưu giao dịch vào Firestore
+    LuuDB --> CapNhatTien: Cập nhật tổng tiền dự án
+    CapNhatTien --> HoanThanh: Hiển thị thông báo cảm ơn
+    HoanThanh --> [*]
+```
+
+#### 3.2. Activity Diagram: Quy trình Tạo và Duyệt dự án
 ```mermaid
 stateDiagram-v2
     [*] --> ToChucTaoDuAn: Tổ chức điền form và submit
@@ -160,28 +229,68 @@ stateDiagram-v2
     BiTuChoi --> [*]
 ```
 
----
+#### 3.3. Sequence Diagram: Tự động đăng Facebook khi duyệt dự án
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant System as Hệ thống (React)
+    participant DB as Firestore
+    participant FB as Facebook API
 
-## 📝 Đặc tả Use Case (Use Case Specifications)
+    Admin->>System: Bấm "Duyệt dự án"
+    System->>DB: Cập nhật status = 'approved'
+    DB-->>System: Thành công
+    System->>DB: Tạo thông báo (Notification) cho users
+    System->>System: Format nội dung bài viết (Tên, Mục tiêu, Ngày, Mô tả)
+    System->>FB: POST /page_id/photos (Kèm ảnh, nội dung, Access Token)
+    FB-->>System: Trả về Post ID (Thành công)
+    System-->>Admin: Hiển thị thông báo "Duyệt thành công"
+```
 
-### Use Case: Duyệt dự án và Tự động đăng Facebook
-- **Tác nhân (Actor):** Quản trị viên (Admin), Facebook API.
-- **Mô tả:** Admin kiểm tra thông tin dự án do Tổ chức gửi lên. Nếu hợp lệ, Admin duyệt dự án. Hệ thống tự động cập nhật trạng thái, gửi thông báo cho người dùng và tự động tạo một bài viết (kèm ảnh bìa và thông tin dự án) lên Facebook Page.
-- **Tiền điều kiện:** Admin đã đăng nhập. Có ít nhất 1 dự án đang ở trạng thái chờ duyệt (pending). Đã cấu hình Facebook Access Token.
+### 4. Đặc tả Use Case (Use Case Specifications)
+
+#### UC01: Quyên góp cho dự án
+- **Tác nhân:** Người dùng (User).
+- **Mô tả:** Người dùng chọn một dự án, nhập số tiền muốn quyên góp, quét mã QR để chuyển khoản và để lại lời chúc.
+- **Tiền điều kiện:** Người dùng đã đăng nhập. Dự án đang ở trạng thái hoạt động.
+- **Luồng sự kiện chính:**
+  1. Người dùng bấm "Quyên góp ngay" tại trang chi tiết dự án.
+  2. Hệ thống hiển thị modal nhập số tiền và lời chúc.
+  3. Người dùng nhập thông tin và bấm "Tiếp tục".
+  4. Hệ thống tạo mã QR thanh toán dựa trên số tiền.
+  5. Người dùng quét mã QR bằng ứng dụng ngân hàng và bấm "Tôi đã chuyển khoản".
+  6. Hệ thống lưu thông tin giao dịch vào Firestore, cập nhật số tiền đã quyên góp của dự án.
+  7. Hệ thống hiển thị thông báo cảm ơn và cập nhật danh sách người ủng hộ.
+
+#### UC02: Đăng ký trở thành Tổ chức
+- **Tác nhân:** Người dùng (User), Quản trị viên (Admin).
+- **Mô tả:** Người dùng gửi yêu cầu nâng cấp tài khoản thành Tổ chức để có thể tạo dự án. Admin sẽ kiểm duyệt yêu cầu này.
+- **Tiền điều kiện:** Người dùng đã đăng nhập và đang là Role 1.
+- **Luồng sự kiện chính:**
+  1. Người dùng vào trang Hồ sơ, chọn tab "Đăng ký tổ chức".
+  2. Người dùng điền Tên tổ chức, Mô tả, tải lên Logo và Giấy tờ chứng thực (PDF/Ảnh).
+  3. Hệ thống lưu yêu cầu vào collection `organization_requests` với trạng thái `pending`.
+  4. Admin vào Dashboard, tab "Duyệt tổ chức".
+  5. Admin xem thông tin, giấy tờ và bấm "Duyệt".
+  6. Hệ thống cập nhật Role của người dùng thành 2, tạo bản ghi trong collection `organizations`.
+  7. Hệ thống gửi thông báo cho người dùng.
+
+#### UC03: Duyệt dự án và Tự động đăng Facebook
+- **Tác nhân:** Quản trị viên (Admin), Facebook API.
+- **Mô tả:** Admin kiểm tra thông tin dự án do Tổ chức gửi lên. Nếu hợp lệ, Admin duyệt dự án. Hệ thống tự động cập nhật trạng thái, gửi thông báo cho người dùng và tự động tạo một bài viết lên Facebook Page.
+- **Tiền điều kiện:** Admin đã đăng nhập. Có ít nhất 1 dự án đang chờ duyệt. Đã cấu hình Facebook Access Token.
 - **Luồng sự kiện chính:**
   1. Admin truy cập tab "Duyệt dự án" trong Admin Dashboard.
-  2. Hệ thống hiển thị danh sách dự án chờ duyệt.
-  3. Admin xem chi tiết dự án và bấm "Duyệt dự án".
-  4. Hệ thống cập nhật trạng thái dự án thành `approved` trong Firestore.
-  5. Hệ thống tạo các bản ghi thông báo (Notification) cho tất cả người dùng.
-  6. Hệ thống gọi Facebook Graph API (`/photos`) truyền vào URL ảnh, nội dung caption (Tên dự án, Danh mục, Mục tiêu, Ngày kết thúc, Mô tả) và Access Token.
-  7. Facebook API trả về kết quả thành công.
-  8. Hệ thống hiển thị thông báo "Duyệt thành công" cho Admin.
-- **Luồng ngoại lệ:** Nếu gọi Facebook API thất bại (sai token, lỗi mạng), hệ thống ghi log lỗi nhưng dự án vẫn được duyệt thành công trên web.
+  2. Admin xem chi tiết dự án và bấm "Duyệt dự án".
+  3. Hệ thống cập nhật trạng thái dự án thành `approved` trong Firestore.
+  4. Hệ thống tạo các bản ghi thông báo (Notification) cho tất cả người dùng.
+  5. Hệ thống gọi Facebook Graph API (`/photos`) truyền vào URL ảnh, nội dung caption và Access Token.
+  6. Facebook API trả về kết quả thành công.
+  7. Hệ thống hiển thị thông báo "Duyệt thành công" cho Admin.
 
-### Use Case: Chat với AI (Tích hợp RAG)
-- **Tác nhân (Actor):** Người dùng (User/Organization), Gemini AI.
-- **Mô tả:** Người dùng đặt câu hỏi cho AI Chatbot. Hệ thống tự động lấy thông tin các dự án đang hoạt động và danh sách tổ chức từ database làm ngữ cảnh (Context) gửi cho AI để AI trả lời chính xác dựa trên dữ liệu thực tế của nền tảng.
+#### UC04: Chat với AI (Tích hợp RAG)
+- **Tác nhân:** Khách/Người dùng, Gemini AI.
+- **Mô tả:** Người dùng đặt câu hỏi cho AI Chatbot. Hệ thống tự động lấy thông tin các dự án đang hoạt động và danh sách tổ chức từ database làm ngữ cảnh (Context) gửi cho AI để AI trả lời chính xác dựa trên dữ liệu thực tế.
 - **Tiền điều kiện:** Không yêu cầu đăng nhập.
 - **Luồng sự kiện chính:**
   1. Người dùng mở Chat Widget và chọn tab "Chat với AI".
@@ -190,7 +299,7 @@ stateDiagram-v2
   4. Hệ thống tổng hợp dữ liệu thành một đoạn văn bản (Context).
   5. Hệ thống gửi Prompt bao gồm: System Instruction + Context + Câu hỏi của người dùng tới Gemini API.
   6. Gemini API xử lý và trả về câu trả lời.
-  7. Hệ thống hiển thị câu trả lời lên giao diện chat cho người dùng.
+  7. Hệ thống hiển thị câu trả lời lên giao diện chat.
 
 ---
 
@@ -241,7 +350,7 @@ src/
 ├── components/        # Các component UI tái sử dụng (ChatWidget, Navbar, Layout...)
 ├── context/           # React Context (AuthContext quản lý state đăng nhập)
 ├── lib/               # Các file cấu hình thư viện (firebase.ts, uploadImage.ts)
-├── pages/             # Các trang chính (Home, AdminDashboard, Campaigns...)
+├── pages/             # Các trang chính (Home, AdminDashboard, Campaigns, Community...)
 ├── types/             # Định nghĩa TypeScript Interfaces/Types
 ├── App.tsx            # Component gốc, cấu hình Routing
 └── main.tsx           # Entry point của ứng dụng
