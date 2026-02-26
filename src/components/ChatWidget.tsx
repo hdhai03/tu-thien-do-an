@@ -25,6 +25,24 @@ export default function ChatWidget() {
     const [adminMessages, setAdminMessages] = useState<ChatMessage[]>([]);
     const [isAiTyping, setIsAiTyping] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+
+    // Close on click outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (chatContainerRef.current && !chatContainerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isOpen]);
 
     // Scroll to bottom
     useEffect(() => {
@@ -147,7 +165,7 @@ ${contextInfo}
     const currentMessages = mode === "ai" ? aiMessages : adminMessages;
 
     return (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-6 right-6 z-50" ref={chatContainerRef}>
             {/* Chat Button */}
             {!isOpen && (
                 <button
