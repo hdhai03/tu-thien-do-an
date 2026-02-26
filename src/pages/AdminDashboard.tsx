@@ -136,6 +136,51 @@ export default function AdminDashboard() {
         };
     }, [isAuthenticated, user, navigate]);
 
+    const shareToFacebook = async (campaign: Campaign) => {
+        const pageId = typeof process !== 'undefined' && process.env.FACEBOOK_PAGE_ID ? process.env.FACEBOOK_PAGE_ID : import.meta.env.VITE_FACEBOOK_PAGE_ID;
+        const accessToken = typeof process !== 'undefined' && process.env.FACEBOOK_PAGE_ACCESS_TOKEN ? process.env.FACEBOOK_PAGE_ACCESS_TOKEN : import.meta.env.VITE_FACEBOOK_PAGE_ACCESS_TOKEN;
+
+        if (!pageId || !accessToken) {
+            console.warn("Chưa cấu hình Facebook Page ID hoặc Access Token. Không thể tự động đăng lên Facebook.");
+            return;
+        }
+
+        const dateEndStr = campaign.dateEnd instanceof Timestamp
+            ? campaign.dateEnd.toDate().toLocaleDateString('vi-VN')
+            : "Không xác định";
+
+        const goalStr = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(campaign.goal);
+
+        const message = `Dự án: ${campaign.title} - Danh mục: ${campaign.category}
+Mục tiêu quyên góp: ${goalStr}
+Ngày kết thúc: ${dateEndStr}
+
+${campaign.description}`;
+
+        try {
+            const response = await fetch(`https://graph.facebook.com/v19.0/${pageId}/photos`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    url: campaign.image,
+                    message: message,
+                    access_token: accessToken
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) {
+                console.error("Facebook API Error:", data.error);
+            } else {
+                console.log("Successfully posted to Facebook:", data);
+            }
+        } catch (error) {
+            console.error("Error posting to Facebook:", error);
+        }
+    };
+
     const handleApproveCampaign = async (campaign: Campaign, status: 'approved' | 'rejected') => {
         try {
             await updateDoc(doc(db, "campaigns", campaign.id), { status });
@@ -156,6 +201,9 @@ export default function AdminDashboard() {
                     });
                 });
                 await batch.commit();
+
+                // Share to Facebook
+                await shareToFacebook(campaign);
             }
 
             setPendingCampaigns(prev => prev.filter(c => c.id !== campaign.id));
