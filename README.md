@@ -68,7 +68,7 @@ Hệ thống phân chia người dùng thành 3 vai trò (Roles):
 ### 1. Sơ đồ Use Case tổng quan (General Use Case Diagram)
 
 ```mermaid
-flowchart LR
+graph LR
     %% Actors
     Guest([Khách])
     User([Người dùng])
@@ -77,16 +77,19 @@ flowchart LR
     AI([AI Assistant])
     FB([Facebook API])
 
-    %% Inheritance
-    User --|> Guest
-    Org --|> User
+    %% Quan hệ giữa các Actor (Dùng mũi tên thường cho flowchart)
+    User -.-> Guest
+    Org -.-> User
 
     %% Use Cases
     UC_View(Xem thông tin: Dự án, Tin tức, Cộng đồng)
     UC_Auth(Đăng ký / Đăng nhập)
     UC_ChatAI(Chat với AI RAG)
     
-    UC_Donate(Quyên góp & Gửi lời chúc)
+    %% Use Case mới cho Khách
+    UC_GuestDonate(Quyên góp không đăng nhập)
+    
+    UC_Donate(Quyên góp & Lưu lịch sử)
     UC_PostComm(Đăng bài cộng đồng)
     UC_Interact(Like, Comment bài viết)
     UC_ReqOrg(Đăng ký trở thành Tổ chức)
@@ -104,11 +107,13 @@ flowchart LR
     UC_Support(Trả lời Chat người dùng)
     UC_AutoPost(Tự động đăng bài Facebook)
 
-    %% Relationships
+    %% Relationships cho Guest
     Guest --> UC_View
     Guest --> UC_Auth
     Guest --> UC_ChatAI
+    Guest --> UC_GuestDonate
 
+    %% Relationships cho User
     User --> UC_Donate
     User --> UC_PostComm
     User --> UC_Interact
@@ -116,9 +121,11 @@ flowchart LR
     User --> UC_ChatAdmin
     User --> UC_Profile
 
+    %% Relationships cho Organization
     Org --> UC_CreateCamp
     Org --> UC_ManageCamp
 
+    %% Relationships cho Admin
     Admin --> UC_ApproveCamp
     Admin --> UC_ApprovePost
     Admin --> UC_ApproveOrg
@@ -126,9 +133,15 @@ flowchart LR
     Admin --> UC_ManageUsers
     Admin --> UC_Support
 
+    %% Hệ thống tự động
     UC_ApproveCamp -.->|Include| UC_AutoPost
     UC_AutoPost --> FB
     UC_ChatAI <--> AI
+
+    %% Styling
+    style Guest fill:#f9f9f9
+    style FB fill:#e7f3ff
+    style AI fill:#fff4dd
 ```
 
 ### 2. Sơ đồ Use Case phân rã (Decomposed Use Case Diagrams)
